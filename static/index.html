@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Registre Qualite</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <div class="background-orb background-orb--left"></div>
+  <div class="background-orb background-orb--right"></div>
+
+  <section id="auth-screen" class="auth-screen">
+      <div class="auth-card">
+      <div class="auth-card__intro">
+        <p class="eyebrow">Registre qualite</p>
+        <h1>Pilotez les numeros de fiche qualite dans un espace securise</h1>
+        <p>
+          Connectez-vous pour centraliser la numerotation, suivre l'etat des fiches
+          et garder un historique fiable pour toute l'equipe qualite.
+        </p>
+      </div>
+
+      <form id="login-form" class="auth-form">
+        <div>
+          <h2>Connexion</h2>
+          <p class="auth-hint">Compte de demonstration initial : `admin` / `admin1234`</p>
+        </div>
+
+        <label class="field">
+          <span>Nom d'utilisateur</span>
+          <input id="login-username" type="text" autocomplete="username" required placeholder="admin">
+        </label>
+
+        <label class="field">
+          <span>Mot de passe</span>
+          <input id="login-password" type="password" autocomplete="current-password" required placeholder="********">
+        </label>
+
+        <div id="auth-feedback" class="feedback" hidden></div>
+        <button class="button button--primary" type="submit">Se connecter</button>
+      </form>
+    </div>
+  </section>
+
+  <div id="app-shell" class="app-shell" hidden>
+    <header class="topbar">
+      <div class="brand">
+        <p class="eyebrow">Plateforme interne</p>
+        <h2>Registre numerique des fiches qualite</h2>
+      </div>
+
+      <div class="topbar__actions">
+        <div class="identity-card">
+          <span id="current-user-name">Utilisateur</span>
+          <strong id="current-user-role">Role</strong>
+        </div>
+        <button id="logout-button" class="button button--ghost" type="button">Deconnexion</button>
+      </div>
+    </header>
+
+    <main class="page-shell">
+      <section class="hero">
+        <div class="hero__content">
+          <p class="eyebrow">Suivi centralise</p>
+          <h1>Maîtrisez la numerotation et la validation de chaque fiche</h1>
+          <p class="hero__text">
+            Le registre central garantit une numerotation unique au format metier,
+            une lecture immediate des statuts et une trace claire des mises a jour effectuees par l'equipe.
+          </p>
+          <div class="hero__meta">
+            <span id="sync-status">Connexion a la base en cours...</span>
+            <button id="refresh-button" class="button button--secondary" type="button">Actualiser</button>
+          </div>
+        </div>
+
+        <section class="hero__panel">
+          <div class="settings-card">
+            <div>
+              <p class="panel-label">Administration</p>
+              <h2>Parametres de numerotation</h2>
+            </div>
+
+            <label class="field">
+              <span>Prefixe global</span>
+              <input id="prefix-input" type="text" maxlength="32" placeholder="QT230201-00-GSS-0">
+            </label>
+
+            <div class="settings-actions">
+              <p class="settings-card__hint">
+                Prochain numero : <strong id="number-preview">QT230201-00-GSS-01</strong>
+              </p>
+              <button id="save-prefix" class="button button--primary" type="button">Enregistrer</button>
+            </div>
+          </div>
+        </section>
+      </section>
+
+      <section class="stats-grid" aria-label="Statistiques">
+        <article class="stat-card">
+          <span>Total fiches</span>
+          <strong id="total-count">0</strong>
+        </article>
+        <article class="stat-card">
+          <span>Fiches cette annee</span>
+          <strong id="year-count">0</strong>
+        </article>
+        <article class="stat-card">
+          <span>Prochain numero</span>
+          <strong id="next-number">FQ-2026-001</strong>
+        </article>
+        <article class="stat-card">
+          <span>En validation</span>
+          <strong id="review-count">0</strong>
+        </article>
+      </section>
+
+      <section class="content-grid">
+        <div class="content-grid__stack">
+          <section class="card">
+            <div class="card__header">
+              <div>
+                <p class="panel-label">Mon acces</p>
+                <h2>Changer mon mot de passe</h2>
+              </div>
+            </div>
+
+            <div id="password-warning" class="feedback" hidden></div>
+
+            <form id="password-form" class="form-grid">
+              <label class="field">
+                <span>Mot de passe actuel</span>
+                <input id="current-password" type="password" required placeholder="Mot de passe actuel">
+              </label>
+
+              <label class="field">
+                <span>Nouveau mot de passe</span>
+                <input id="new-password" type="password" required placeholder="Minimum 8 caracteres">
+              </label>
+
+              <label class="field field--full">
+                <span>Confirmation</span>
+                <input id="confirm-password" type="password" required placeholder="Retaper le nouveau mot de passe">
+              </label>
+
+              <div class="field--full form-actions">
+                <p class="settings-card__hint settings-card__hint--dark">
+                  Utilisez un mot de passe fort et different du mot de passe temporaire.
+                </p>
+                <button class="button button--primary" type="submit">Mettre a jour mon mot de passe</button>
+              </div>
+            </form>
+          </section>
+
+          <section class="card">
+            <div class="card__header">
+              <div>
+                <p class="panel-label">Nouvelle fiche</p>
+                <h2 id="form-title">Ajouter une fiche qualite</h2>
+              </div>
+              <button id="reset-form" class="button button--ghost" type="button">Reinitialiser</button>
+            </div>
+
+            <form id="record-form" class="form-grid">
+              <label class="field field--full">
+                <span>Intitule de la fiche</span>
+                <input id="title" name="title" type="text" required placeholder="Procedure de controle des lots">
+              </label>
+
+              <label class="field">
+                <span>Annee</span>
+                <input id="year" name="year" type="number" min="2000" max="2100" required>
+              </label>
+
+              <label class="field">
+                <span>Date de creation</span>
+                <input id="created-at" name="createdAt" type="date" required>
+              </label>
+
+              <label class="field">
+                <span>Service</span>
+                <input id="department" name="department" type="text" required placeholder="Qualite">
+              </label>
+
+              <label class="field">
+                <span>Responsable</span>
+                <input id="owner" name="owner" type="text" required placeholder="Mme Bennani">
+              </label>
+
+              <label class="field">
+                <span>Statut</span>
+                <select id="status" name="status">
+                  <option value="draft">Brouillon</option>
+                  <option value="in_review">En validation</option>
+                  <option value="approved">Validee</option>
+                  <option value="archived">Archivee</option>
+                </select>
+              </label>
+
+              <label class="field field--full">
+                <span>Notes</span>
+                <textarea id="notes" name="notes" rows="4" placeholder="Commentaires, reference documentaire, remarques..."></textarea>
+              </label>
+
+              <div class="form-actions field--full">
+                <div class="number-badge">
+                  Numero prevu
+                  <strong id="live-number">QT230201-00-GSS-01</strong>
+                </div>
+                <button id="submit-button" class="button button--primary" type="submit">Enregistrer la fiche</button>
+              </div>
+            </form>
+          </section>
+
+          <section id="admin-panel" class="card" hidden>
+            <div class="card__header">
+              <div>
+                <p class="panel-label">Administration</p>
+                <h2>Utilisateurs et acces</h2>
+              </div>
+            </div>
+
+            <form id="user-form" class="form-grid">
+              <label class="field">
+                <span>Nom complet</span>
+                <input id="user-display-name" type="text" required placeholder="Nadia El Idrissi">
+              </label>
+
+              <label class="field">
+                <span>Nom d'utilisateur</span>
+                <input id="user-username" type="text" required placeholder="n.idrissi">
+              </label>
+
+              <label class="field">
+                <span>Role</span>
+                <select id="user-role">
+                  <option value="viewer">Lecteur</option>
+                  <option value="editor">Editeur</option>
+                  <option value="admin">Administrateur</option>
+                </select>
+              </label>
+
+              <label class="field">
+                <span>Mot de passe initial</span>
+                <input id="user-password" type="password" required placeholder="Minimum 8 caracteres">
+              </label>
+
+              <div class="field--full form-actions">
+                <p class="settings-card__hint settings-card__hint--dark">
+                  Les administrateurs gerent les parametres et suppressions. Les editeurs modifient les fiches.
+                </p>
+                <button class="button button--primary" type="submit">Ajouter l'utilisateur</button>
+              </div>
+            </form>
+
+            <div class="table-wrapper table-wrapper--compact">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Nom</th>
+                    <th>Utilisateur</th>
+                    <th>Role</th>
+                    <th>Acces</th>
+                    <th>Cree le</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="users-body"></tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+
+        <section class="card">
+          <div class="card__header">
+            <div>
+              <p class="panel-label">Registre partage</p>
+              <h2>Liste des fiches</h2>
+            </div>
+            <button id="export-button" class="button button--secondary" type="button">Exporter CSV</button>
+          </div>
+
+          <div class="filters">
+            <label class="field">
+              <span>Recherche</span>
+              <input id="search-input" type="search" placeholder="Numero, intitule, service, responsable">
+            </label>
+
+            <label class="field">
+              <span>Statut</span>
+              <select id="status-filter">
+                <option value="all">Tous</option>
+                <option value="draft">Brouillon</option>
+                <option value="in_review">En validation</option>
+                <option value="approved">Validee</option>
+                <option value="archived">Archivee</option>
+              </select>
+            </label>
+
+            <label class="field">
+              <span>Annee</span>
+              <select id="year-filter">
+                <option value="all">Toutes</option>
+              </select>
+            </label>
+          </div>
+
+          <div id="feedback" class="feedback" hidden></div>
+
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>Numero</th>
+                  <th>Intitule</th>
+                  <th>Service</th>
+                  <th>Responsable</th>
+                  <th>Statut</th>
+                  <th>Mise a jour</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="records-body"></tbody>
+            </table>
+          </div>
+
+          <div id="empty-state" class="empty-state">
+            Aucune fiche enregistree. Creez la premiere fiche qualite pour lancer la numerotation.
+          </div>
+        </section>
+      </section>
+    </main>
+  </div>
+
+  <template id="row-template">
+    <tr>
+      <td data-label="Numero"></td>
+      <td data-label="Intitule"></td>
+      <td data-label="Service"></td>
+      <td data-label="Responsable"></td>
+      <td data-label="Statut"></td>
+      <td data-label="Mise a jour"></td>
+      <td data-label="Actions" class="actions-cell">
+        <button class="button button--tiny button--ghost" type="button" data-action="edit">Modifier</button>
+        <button class="button button--tiny button--danger" type="button" data-action="delete">Supprimer</button>
+      </td>
+    </tr>
+  </template>
+
+  <template id="user-row-template">
+    <tr>
+      <td data-label="Nom"></td>
+      <td data-label="Utilisateur"></td>
+      <td data-label="Role"></td>
+      <td data-label="Acces"></td>
+      <td data-label="Cree le"></td>
+      <td data-label="Actions" class="actions-cell">
+        <button class="button button--tiny button--ghost" type="button" data-action="reset-password">Reinitialiser</button>
+      </td>
+    </tr>
+  </template>
+
+  <script src="/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,5 @@
+__pycache__/
+*.pyc
+quality_sheets.db
+quality_sheets.db-shm
+quality_sheets.db-wal
