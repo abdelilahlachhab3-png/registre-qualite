@@ -498,9 +498,9 @@ def create_user(
         connection,
         """
         INSERT INTO users (username, display_name, password_salt, password_hash, role, must_change_password, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, 0, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         """,
-        (username, display_name, salt_hex, password_hash, role, now, now),
+        (username, display_name, salt_hex, password_hash, role, False, now, now),
     )
     row = db_fetchone(
         connection,
@@ -591,7 +591,7 @@ def update_user_password(
         SET password_salt = ?, password_hash = ?, must_change_password = ?, updated_at = ?
         WHERE id = ?
         """,
-        (salt_hex, password_hash, 1 if must_change_password else 0, utc_now(), user_id),
+        (salt_hex, password_hash, bool(must_change_password), utc_now(), user_id),
     )
     row = fetch_user_by_id(connection, user_id)
     if row is None:
