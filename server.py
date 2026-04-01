@@ -54,7 +54,14 @@ def sanitize_prefix(value: str | None) -> str:
 
 
 def build_number(prefix: str, serial: int) -> str:
-    return f"{prefix}{serial}"
+    head = prefix.rstrip("0123456789")
+    tail = prefix[len(head):]
+    if not tail:
+        return f"{prefix}{serial}"
+
+    width = len(tail) + 1
+    value = int(tail) * 10 + serial
+    return f"{head}{value:0{width}d}"
 
 
 def utc_now() -> str:

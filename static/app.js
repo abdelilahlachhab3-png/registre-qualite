@@ -572,7 +572,17 @@ function sanitizePrefix(value) {
 }
 
 function buildNumber(prefix, serial) {
-  return `${prefix}${serial}`;
+  const normalizedPrefix = String(prefix || "");
+  const head = normalizedPrefix.replace(/\d+$/, "");
+  const tail = normalizedPrefix.slice(head.length);
+
+  if (!tail) {
+    return `${normalizedPrefix}${serial}`;
+  }
+
+  const width = tail.length + 1;
+  const value = Number(tail) * 10 + Number(serial);
+  return `${head}${String(value).padStart(width, "0")}`;
 }
 
 function formatDate(value) {
