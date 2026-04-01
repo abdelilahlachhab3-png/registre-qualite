@@ -404,7 +404,7 @@ function renderStats() {
   const currentYearRecords = state.records.filter((item) => Number(item.year) === CURRENT_YEAR);
   const inReviewRecords = state.records.filter((item) => item.status === "in_review");
   const nextSerial = getNextSerial(state.settings.prefix);
-  const nextNumber = nextSerial > 9 ? "Limite 09 atteinte" : buildNumber(state.settings.prefix, nextSerial);
+  const nextNumber = buildNumber(state.settings.prefix, nextSerial);
 
   elements.totalCount.textContent = String(state.records.length);
   elements.yearCount.textContent = String(currentYearRecords.length);
@@ -538,7 +538,7 @@ function updateLiveNumber() {
   }
 
   const nextSerial = getNextSerial(state.settings.prefix);
-  elements.liveNumber.textContent = nextSerial > 9 ? "Limite 09 atteinte" : buildNumber(state.settings.prefix, nextSerial);
+  elements.liveNumber.textContent = buildNumber(state.settings.prefix, nextSerial);
 }
 
 function getNextSerial(prefix, excludedId = null) {

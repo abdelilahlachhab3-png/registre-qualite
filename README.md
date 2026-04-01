@@ -4,7 +4,7 @@ Application web en ligne pour centraliser la numerotation des fiches qualite, su
 
 ## Fonctionnalites
 
-- Numerotation automatique au format `QT230201-GSS-QA-ITN-014171` a `QT230201-GSS-QA-ITN-014179`
+- Numerotation automatique continue a partir de `QT230201-GSS-QA-ITN-014171`
 - Prefixe global par defaut : `QT230201-GSS-QA-ITN-01417`
 - Base PostgreSQL pour la production
 - Mode SQLite conserve pour le developpement local rapide

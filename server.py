@@ -357,10 +357,7 @@ def next_serial(
             (prefix, excluded_id),
         )
 
-    serial = int(row["next_serial"])
-    if serial > 9:
-        raise ApiError(HTTPStatus.BAD_REQUEST, "Ce prefixe autorise uniquement les numeros de 01 a 09.")
-    return serial
+    return int(row["next_serial"])
 
 
 def serialize_record(row: Any) -> dict[str, object]:
