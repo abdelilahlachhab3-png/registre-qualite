@@ -543,6 +543,11 @@ td {
   color: var(--accent-dark);
 }
 
+.status-pill[data-status="reserved"] {
+  background: rgba(17, 102, 184, 0.14);
+  color: #165693;
+}
+
 .status-pill[data-status="archived"] {
   background: rgba(31, 42, 51, 0.12);
   color: #2d3a45;

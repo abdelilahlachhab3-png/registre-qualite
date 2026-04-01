@@ -338,6 +338,23 @@ def set_prefix(connection: DBConnection, prefix: str) -> None:
     )
 
 
+def get_current_serial(connection: DBConnection, prefix: str) -> int:
+    row = db_fetchone(connection, "SELECT value FROM settings WHERE key = ?", (f"serial_{prefix}",))
+    return int(row["value"]) if row else 0
+
+
+def set_current_serial(connection: DBConnection, prefix: str, serial: int) -> None:
+    db_execute(
+        connection,
+        """
+        INSERT INTO settings (key, value)
+        VALUES (?, ?)
+        ON CONFLICT(key) DO UPDATE SET value = excluded.value
+        """,
+        (f"serial_{prefix}", str(serial)),
+    )
+
+
 def next_serial(
     connection: DBConnection,
     prefix: str,
@@ -664,7 +681,7 @@ def validate_record_payload(payload: dict[str, object]) -> dict[str, object]:
     if not title or not department or not owner or not created_at:
         raise ApiError(HTTPStatus.BAD_REQUEST, "Les champs obligatoires sont manquants.")
 
-    if status not in {"draft", "in_review", "approved", "archived"}:
+    if status not in {"draft", "in_review", "approved", "archived", "reserved"}:
         raise ApiError(HTTPStatus.BAD_REQUEST, "Le statut est invalide.")
 
     try:
@@ -681,6 +698,21 @@ def validate_record_payload(payload: dict[str, object]) -> dict[str, object]:
         "notes": notes,
         "year": year,
     }
+
+
+def validate_bulk_reservation_payload(payload: dict[str, object]) -> dict[str, int]:
+    try:
+        quantity = int(payload.get("quantity", 0))
+    except (TypeError, ValueError) as error:
+        raise ApiError(HTTPStatus.BAD_REQUEST, "Le nombre de codes est invalide.") from error
+
+    if quantity < 1:
+        raise ApiError(HTTPStatus.BAD_REQUEST, "Le nombre de codes doit etre superieur a zero.")
+
+    if quantity > 200:
+        raise ApiError(HTTPStatus.BAD_REQUEST, "Vous pouvez reserver jusqu'a 200 codes par operation.")
+
+    return {"quantity": quantity}
 
 
 class QualityRequestHandler(BaseHTTPRequestHandler):
@@ -748,6 +780,11 @@ class QualityRequestHandler(BaseHTTPRequestHandler):
                     self.require_role("editor")
                     self.api_create_record()
                     return
+
+            if parsed.path == "/api/records/reserve" and self.command == "POST":
+                self.require_role("editor")
+                self.api_bulk_reserve_records()
+                return
 
             if parsed.path.startswith("/api/records/"):
                 record_id = self.parse_record_id(parsed.path)
@@ -918,6 +955,62 @@ class QualityRequestHandler(BaseHTTPRequestHandler):
             row = fetch_record(connection, int(row["id"]))
 
         self.send_json({"record": serialize_record(row)}, status=HTTPStatus.CREATED)
+
+    def api_bulk_reserve_records(self) -> None:
+        payload = validate_bulk_reservation_payload(self.read_json_body())
+        actor = self.serialize_current_user()["displayName"]
+        quantity = payload["quantity"]
+        created_at = datetime.now().date().isoformat()
+        year = datetime.now().year
+
+        with get_connection() as connection:
+            prefix = get_prefix(connection)
+            begin_write(connection)
+            start_serial = next_serial(connection, prefix)
+            numbers: list[str] = []
+
+            for index in range(quantity):
+                serial = start_serial + index
+                number = build_number(prefix, serial)
+                numbers.append(number)
+                now = utc_now()
+                db_execute(
+                    connection,
+                    """
+                    INSERT INTO records (
+                      prefix, year, serial, number, title, department, owner, status, created_at, notes,
+                      updated_at, created_by, updated_by
+                    )
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        prefix,
+                        year,
+                        serial,
+                        number,
+                        "Numero reserve",
+                        "Suivi numerotation",
+                        actor,
+                        "reserved",
+                        created_at,
+                        f"Reservation rapide de {quantity} code(s).",
+                        now,
+                        actor,
+                        actor,
+                    ),
+                )
+
+            connection.commit()
+
+        self.send_json(
+            {
+                "count": quantity,
+                "firstNumber": numbers[0],
+                "lastNumber": numbers[-1],
+                "numbers": numbers if quantity <= 20 else [],
+            },
+            status=HTTPStatus.CREATED,
+        )
 
     def api_update_record(self, record_id: int) -> None:
         payload = validate_record_payload(self.read_json_body())

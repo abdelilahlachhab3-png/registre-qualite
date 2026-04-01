@@ -14,6 +14,7 @@ const statusLabels = {
   draft: "Brouillon",
   in_review: "En validation",
   approved: "Validee",
+  reserved: "Reservee",
   archived: "Archivee",
 };
 
@@ -42,6 +43,10 @@ const elements = {
   userForm: document.querySelector("#user-form"),
   usersBody: document.querySelector("#users-body"),
   userRowTemplate: document.querySelector("#user-row-template"),
+  quickReserveForm: document.querySelector("#quick-reserve-form"),
+  quickReserveCount: document.querySelector("#quick-reserve-count"),
+  quickReservePreview: document.querySelector("#quick-reserve-preview"),
+  quickReserveButton: document.querySelector("#quick-reserve-button"),
   form: document.querySelector("#record-form"),
   formTitle: document.querySelector("#form-title"),
   submitButton: document.querySelector("#submit-button"),
@@ -98,6 +103,7 @@ function bindEvents() {
   elements.loginForm.addEventListener("submit", handleLogin);
   elements.logoutButton.addEventListener("click", handleLogout);
   elements.passwordForm.addEventListener("submit", handleChangePassword);
+  elements.quickReserveForm.addEventListener("submit", handleQuickReserve);
   elements.form.addEventListener("submit", handleSubmit);
   elements.userForm.addEventListener("submit", handleCreateUser);
   elements.resetButton.addEventListener("click", resetForm);
@@ -117,6 +123,7 @@ function bindEvents() {
     loadRecords({ silent: true }).catch(() => {});
   });
   elements.fields.year.addEventListener("input", updateLiveNumber);
+  elements.quickReserveCount.addEventListener("input", updateQuickReservePreview);
 }
 
 async function restoreSession() {
@@ -265,6 +272,28 @@ async function handleSubmit(event) {
   }
 }
 
+async function handleQuickReserve(event) {
+  event.preventDefault();
+
+  const quantity = Number(elements.quickReserveCount.value);
+
+  try {
+    const response = await fetchJson("/api/records/reserve", {
+      method: "POST",
+      body: JSON.stringify({ quantity }),
+    });
+
+    elements.quickReserveCount.value = "1";
+    updateQuickReservePreview();
+    await Promise.all([loadSettings(), loadRecords()]);
+    showFeedback(
+      `${response.count} numero(s) reserve(s) : ${response.firstNumber} -> ${response.lastNumber}`,
+    );
+  } catch (error) {
+    showFeedback(error.message, "error");
+  }
+}
+
 async function handleCreateUser(event) {
   event.preventDefault();
 
@@ -380,6 +409,7 @@ function setDefaultFormValues() {
   elements.fields.year.value = String(CURRENT_YEAR);
   elements.fields.status.value = "draft";
   updateLiveNumber();
+  updateQuickReservePreview();
 }
 
 function resetForm() {
@@ -398,6 +428,7 @@ function render() {
   renderCurrentUser();
   updateSyncStatus();
   updateLiveNumber();
+  updateQuickReservePreview();
 }
 
 function renderStats() {
@@ -541,6 +572,17 @@ function updateLiveNumber() {
   elements.liveNumber.textContent = buildNumber(state.settings.prefix, nextSerial);
 }
 
+function updateQuickReservePreview() {
+  const quantity = Math.max(1, Number(elements.quickReserveCount.value) || 1);
+  const firstSerial = getNextSerial(state.settings.prefix);
+  const lastSerial = firstSerial + quantity - 1;
+  const firstNumber = buildNumber(state.settings.prefix, firstSerial);
+  const lastNumber = buildNumber(state.settings.prefix, lastSerial);
+  elements.quickReservePreview.textContent = quantity === 1
+    ? `Numero reserve : ${firstNumber}`
+    : `Plage reservee : ${firstNumber} -> ${lastNumber}`;
+}
+
 function getNextSerial(prefix, excludedId = null) {
   const serials = state.records
     .filter((item) => item.prefix === prefix && item.id !== excludedId)
@@ -659,6 +701,8 @@ function setRecordFormAccess() {
   });
   elements.submitButton.disabled = !enabled;
   elements.resetButton.disabled = !enabled;
+  elements.quickReserveCount.disabled = !enabled;
+  elements.quickReserveButton.disabled = !enabled;
 }
 
 function escapeCsvCell(value) {

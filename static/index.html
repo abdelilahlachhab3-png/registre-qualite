@@ -120,6 +120,36 @@
           <section class="card">
             <div class="card__header">
               <div>
+                <p class="panel-label">Reservation rapide</p>
+                <h2>Generer plusieurs numeros</h2>
+              </div>
+            </div>
+
+            <form id="quick-reserve-form" class="form-grid">
+              <label class="field">
+                <span>Nombre de codes</span>
+                <input id="quick-reserve-count" type="number" min="1" max="200" step="1" value="1" required>
+              </label>
+
+              <div class="field field--full">
+                <span>Apercu</span>
+                <div class="number-badge">
+                  <strong id="quick-reserve-preview">Numero reserve : QT230201-GSS-QA-ITN-014171</strong>
+                </div>
+              </div>
+
+              <div class="field--full form-actions">
+                <p class="settings-card__hint settings-card__hint--dark">
+                  Saisissez seulement le nombre de codes voulu. L'application reserve automatiquement les numeros dans le registre.
+                </p>
+                <button id="quick-reserve-button" class="button button--primary" type="submit">Reserver les numeros</button>
+              </div>
+            </form>
+          </section>
+
+          <section class="card">
+            <div class="card__header">
+              <div>
                 <p class="panel-label">Mon acces</p>
                 <h2>Changer mon mot de passe</h2>
               </div>
@@ -193,6 +223,7 @@
                   <option value="draft">Brouillon</option>
                   <option value="in_review">En validation</option>
                   <option value="approved">Validee</option>
+                  <option value="reserved">Reservee</option>
                   <option value="archived">Archivee</option>
                 </select>
               </label>
@@ -293,6 +324,7 @@
                 <option value="draft">Brouillon</option>
                 <option value="in_review">En validation</option>
                 <option value="approved">Validee</option>
+                <option value="reserved">Reservee</option>
                 <option value="archived">Archivee</option>
               </select>
             </label>
@@ -325,7 +357,7 @@
           </div>
 
           <div id="empty-state" class="empty-state">
-            Aucune fiche enregistree. Creez la premiere fiche qualite pour lancer la numerotation.
+            Aucun numero enregistre. Reservez des codes ou creez la premiere fiche pour lancer la numerotation.
           </div>
         </section>
       </section>
