@@ -28,7 +28,7 @@ STATIC_DIR = BASE_DIR / "static"
 DATABASE_URL = os.environ.get("DATABASE_URL", "").strip()
 DB_PATH = Path(os.environ.get("DB_PATH", str(BASE_DIR / "quality_sheets.db"))).resolve()
 DB_BACKEND = "postgres" if DATABASE_URL else "sqlite"
-DEFAULT_PREFIX = "QT230201-00-GSS-0"
+DEFAULT_PREFIX = "QT230201-GSS-QA-ITN-01417"
 SESSION_DURATION_SECONDS = 8 * 60 * 60
 PBKDF2_ITERATIONS = 200_000
 ROLE_LEVELS = {"viewer": 1, "editor": 2, "admin": 3}
@@ -619,15 +619,16 @@ def get_user_by_session(connection: DBConnection, token: str | None) -> Any:
         return None
 
     cleanup_expired_sessions(connection)
+    active_condition = "users.is_active = TRUE" if using_postgres() else "users.is_active = 1"
     row = db_fetchone(
         connection,
-        """
+        f"""
         SELECT users.id, users.username, users.display_name, users.role, users.is_active, users.must_change_password,
                users.created_at, users.updated_at,
                sessions.id AS session_id
         FROM sessions
         JOIN users ON users.id = sessions.user_id
-        WHERE sessions.token_hash = ? AND sessions.expires_at > ? AND users.is_active = 1
+        WHERE sessions.token_hash = ? AND sessions.expires_at > ? AND {active_condition}
         """,
         (hash_session_token(token), now_timestamp()),
     )

@@ -5,7 +5,7 @@ const state = {
   users: [],
   editingId: null,
   currentUser: null,
-  settings: { prefix: "QT230201-00-GSS-0" },
+  settings: { prefix: "QT230201-GSS-QA-ITN-01417" },
   filters: { query: "", status: "all", year: "all" },
   lastSyncLabel: "",
 };
@@ -567,8 +567,8 @@ function createRolePill(role) {
 }
 
 function sanitizePrefix(value) {
-  const normalized = String(value || "QT230201-00-GSS-0").toUpperCase().replace(/[^A-Z0-9-]/g, "").slice(0, 32);
-  return normalized || "QT230201-00-GSS-0";
+  const normalized = String(value || "QT230201-GSS-QA-ITN-01417").toUpperCase().replace(/[^A-Z0-9-]/g, "").slice(0, 32);
+  return normalized || "QT230201-GSS-QA-ITN-01417";
 }
 
 function buildNumber(prefix, serial) {

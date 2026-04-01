@@ -4,8 +4,8 @@ Application web en ligne pour centraliser la numerotation des fiches qualite, su
 
 ## Fonctionnalites
 
-- Numerotation automatique au format `QT230201-00-GSS-01` a `QT230201-00-GSS-09`
-- Prefixe global par defaut : `QT230201-00-GSS-0`
+- Numerotation automatique au format `QT230201-GSS-QA-ITN-014171` a `QT230201-GSS-QA-ITN-014179`
+- Prefixe global par defaut : `QT230201-GSS-QA-ITN-01417`
 - Base PostgreSQL pour la production
 - Mode SQLite conserve pour le developpement local rapide
 - Connexion utilisateur avec session securisee par cookie HTTP
@@ -72,6 +72,7 @@ En mode local, la base `quality_sheets.db` est creee automatiquement au premier 
 - `static/app.js` : logique front-end et appels API
 - `requirements.txt` : dependances Python
 - `Dockerfile` : image de deploiement
+- `railway.json` : configuration de deploiement Railway
 
 ## Deploiement Docker
 
@@ -117,6 +118,46 @@ Apres deploiement, vous pouvez :
 - `DATABASE_URL` : fourni automatiquement par Render via la base PostgreSQL
 - `ADMIN_PASSWORD` : a fournir manuellement
 - `COOKIE_SECURE=true` : deja prevu dans `render.yaml`
+
+## Publication sur Railway
+
+Le projet contient maintenant [railway.json](./railway.json), pour simplifier un essai sur Railway avec le meme `Dockerfile`.
+
+### Quand choisir Railway
+
+- si vous voulez tester une autre plateforme que Render
+- si vous voulez reutiliser directement le depot GitHub existant
+- si vous voulez garder PostgreSQL en production
+
+### Etapes
+
+1. Ouvrir `https://railway.app`
+2. Se connecter avec GitHub
+3. Creer un nouveau projet vide
+4. Ajouter une base `PostgreSQL`
+5. Ajouter un service depuis GitHub et choisir le depot `registre-qualite`
+6. Railway detecte `railway.json` et le `Dockerfile`
+7. Definir les variables d'environnement du service :
+   - `HOST=0.0.0.0`
+   - `ADMIN_USERNAME=admin`
+   - `ADMIN_NAME=Administrateur Qualite`
+   - `ADMIN_PASSWORD=un mot de passe fort`
+   - `COOKIE_SECURE=true`
+8. Relier `DATABASE_URL` a la variable fournie par le service PostgreSQL Railway
+9. Lancer le deploiement
+
+### Ce que fait `railway.json`
+
+- force la construction avec le `Dockerfile`
+- configure le health check sur `/api/health`
+- applique une politique de redemarrage en cas d'echec
+
+### Notes utiles
+
+- l'application lit deja `PORT`, donc Railway peut injecter son port dynamiquement
+- l'application lit deja `DATABASE_URL`, donc PostgreSQL Railway est compatible sans modification du code
+- pour un simple test, Railway propose un essai gratuit selon les conditions du compte et de la verification GitHub
+- pour un usage durable en production, verifiez ensuite les limites et la facturation Railway
 
 ## Mise en ligne
 
