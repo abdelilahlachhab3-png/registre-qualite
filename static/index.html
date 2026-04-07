@@ -47,7 +47,7 @@
     <header class="topbar">
       <div class="brand">
         <p class="eyebrow">Plateforme interne</p>
-        <h2>Registre numerique des fiches qualite</h2>
+        <h2>Registre numerique des fiches <span id="topbar-module-code">ITN</span></h2>
       </div>
 
       <div class="topbar__actions">
@@ -60,10 +60,18 @@
     </header>
 
     <main class="page-shell">
+      <nav class="module-nav" aria-label="Modules de suivi">
+        <a class="module-nav__link" data-module="itn" href="/">Suivi ITN</a>
+        <a class="module-nav__link" data-module="rir" href="/rir">Suivi RIR</a>
+        <a class="module-nav__link" data-module="mrr" href="/mrr">Suivi MRR</a>
+        <a class="module-nav__link" data-module="ncr" href="/ncr">Suivi NCR</a>
+        <a class="module-nav__link" data-module="qor" href="/qor">Suivi QOR</a>
+      </nav>
+
       <section class="hero">
         <div class="hero__content">
           <p class="eyebrow">Suivi centralise</p>
-          <h1>Maîtrisez la numerotation et la validation de chaque fiche</h1>
+          <h1 id="hero-title">Maitrisez la numerotation et la validation de chaque fiche ITN</h1>
           <p class="hero__text">
             Le registre central garantit une numerotation unique au format metier,
             une lecture immediate des statuts et une trace claire des mises a jour effectuees par l'equipe.
@@ -78,24 +86,24 @@
           <div class="settings-card">
             <div>
               <p class="panel-label">Administration</p>
-              <h2>Parametres de numerotation</h2>
+              <h2 id="settings-title">Parametres de numerotation ITN</h2>
             </div>
 
             <label class="field">
-              <span>Prefixe global</span>
+              <span>Prefixe du module</span>
               <input id="prefix-input" type="text" maxlength="32" placeholder="QT230201-GSS-QA-ITN-01417">
             </label>
 
             <div class="settings-actions">
               <p class="settings-card__hint">
-                Prochain numero : <strong id="number-preview">QT230201-GSS-QA-ITN-014171</strong>
+                <span id="number-preview-label">Prochain numero :</span> <strong id="number-preview">QT230201-GSS-QA-ITN-014171</strong>
               </p>
               <button id="save-prefix" class="button button--primary" type="button">Enregistrer</button>
             </div>
           </div>
         </section>
       </section>
-
+ 
       <section class="stats-grid" aria-label="Statistiques">
         <article class="stat-card">
           <span>Total fiches</span>
@@ -106,7 +114,7 @@
           <strong id="year-count">0</strong>
         </article>
         <article class="stat-card">
-          <span>Prochain numero</span>
+          <span id="next-number-label">Prochain numero</span>
           <strong id="next-number">FQ-2026-001</strong>
         </article>
         <article class="stat-card">
@@ -121,7 +129,7 @@
             <div class="card__header">
               <div>
                 <p class="panel-label">Reservation rapide</p>
-                <h2>Generer plusieurs numeros</h2>
+                <h2 id="reserve-title">Generer plusieurs numeros ITN</h2>
               </div>
             </div>
 
@@ -130,6 +138,11 @@
                 <span>Nombre de codes</span>
                 <input id="quick-reserve-count" type="number" min="1" max="200" step="1" value="1" required>
               </label>
+
+              <div id="quick-reserve-preferred-field" class="field field--full" hidden>
+                <span>Numeros non utilises preferes</span>
+                <div id="quick-reserve-preferred-list" class="checkbox-list"></div>
+              </div>
 
               <div class="field field--full">
                 <span>Apercu</span>
@@ -186,7 +199,7 @@
             <div class="card__header">
               <div>
                 <p class="panel-label">Nouvelle fiche</p>
-                <h2 id="form-title">Ajouter une fiche qualite</h2>
+                <h2 id="form-title">Ajouter une fiche ITN</h2>
               </div>
               <button id="reset-form" class="button button--ghost" type="button">Reinitialiser</button>
             </div>
@@ -224,7 +237,15 @@
                   <option value="in_review">En validation</option>
                   <option value="approved">Validee</option>
                   <option value="reserved">Reservee</option>
+                  <option value="unused">Non utilise</option>
                   <option value="archived">Archivee</option>
+                </select>
+              </label>
+
+              <label id="reusable-number-field" class="field field--full" hidden>
+                <span>Numeros non utilises disponibles</span>
+                <select id="reusable-number-select">
+                  <option value="">Selectionner un numero non utilise</option>
                 </select>
               </label>
 
@@ -235,7 +256,7 @@
 
               <div class="form-actions field--full">
                 <div class="number-badge">
-                  Numero prevu
+                  <span id="live-number-label">Numero prevu</span>
                   <strong id="live-number">QT230201-GSS-QA-ITN-014171</strong>
                 </div>
                 <button id="submit-button" class="button button--primary" type="submit">Enregistrer la fiche</button>
@@ -306,7 +327,7 @@
           <div class="card__header">
             <div>
               <p class="panel-label">Registre partage</p>
-              <h2>Liste des fiches</h2>
+              <h2 id="records-title">Liste des fiches ITN</h2>
             </div>
             <button id="export-button" class="button button--secondary" type="button">Exporter CSV</button>
           </div>
@@ -325,6 +346,7 @@
                 <option value="in_review">En validation</option>
                 <option value="approved">Validee</option>
                 <option value="reserved">Reservee</option>
+                <option value="unused">Non utilise</option>
                 <option value="archived">Archivee</option>
               </select>
             </label>
@@ -357,7 +379,7 @@
           </div>
 
           <div id="empty-state" class="empty-state">
-            Aucun numero enregistre. Reservez des codes ou creez la premiere fiche pour lancer la numerotation.
+            Aucun numero ITN enregistre. Reservez des codes ou creez la premiere fiche pour lancer la numerotation.
           </div>
         </section>
       </section>

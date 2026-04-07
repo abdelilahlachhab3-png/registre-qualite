@@ -33,6 +33,21 @@ SESSION_DURATION_SECONDS = 8 * 60 * 60
 PBKDF2_ITERATIONS = 200_000
 ROLE_LEVELS = {"viewer": 1, "editor": 2, "admin": 3}
 DBConnection = Any
+MODULE_DEFAULT_PREFIXES = {
+    "itn": DEFAULT_PREFIX,
+    "rir": "QT230201-GSS-QA-RIR-01417",
+    "mrr": "QT230201-GSS-QA-MRR-01417",
+    "ncr": "QT230201-GSS-QA-NCR-01417",
+    "qor": "QT230201-GSS-QA-QOR-01417",
+}
+MODULE_TABLES = {
+    "itn": "records",
+    "rir": "rir_records",
+    "mrr": "mrr_records",
+    "ncr": "ncr_records",
+    "qor": "qor_records",
+}
+MODULE_ROUTE_PATHS = {module: f"/{module}" for module in MODULE_TABLES if module != "itn"}
 
 if psycopg is not None:
     DB_INTEGRITY_ERRORS = (sqlite3.IntegrityError, psycopg.IntegrityError)
@@ -148,14 +163,30 @@ def get_table_columns(connection: DBConnection, table_name: str) -> set[str]:
     return {row["name"] for row in rows}
 
 
-def ensure_record_columns(connection: DBConnection) -> None:
-    columns = get_table_columns(connection, "records")
+def normalize_module(module: str | None) -> str:
+    normalized = (module or "itn").strip().lower()
+    if normalized not in MODULE_TABLES:
+        raise ApiError(HTTPStatus.BAD_REQUEST, "Le module demande est invalide.")
+    return normalized
+
+
+def get_module_table(module: str) -> str:
+    return MODULE_TABLES[normalize_module(module)]
+
+
+def get_module_prefix_key(module: str) -> str:
+    normalized = normalize_module(module)
+    return "prefix" if normalized == "itn" else f"prefix_{normalized}"
+
+
+def ensure_record_columns(connection: DBConnection, table_name: str) -> None:
+    columns = get_table_columns(connection, table_name)
 
     if "created_by" not in columns:
-        db_execute(connection, "ALTER TABLE records ADD COLUMN created_by TEXT NOT NULL DEFAULT ''")
+        db_execute(connection, f"ALTER TABLE {table_name} ADD COLUMN created_by TEXT NOT NULL DEFAULT ''")
 
     if "updated_by" not in columns:
-        db_execute(connection, "ALTER TABLE records ADD COLUMN updated_by TEXT NOT NULL DEFAULT ''")
+        db_execute(connection, f"ALTER TABLE {table_name} ADD COLUMN updated_by TEXT NOT NULL DEFAULT ''")
 
 
 def ensure_user_columns(connection: DBConnection) -> None:
@@ -203,6 +234,86 @@ def init_db() -> None:
                   updated_at TEXT NOT NULL,
                   created_by TEXT NOT NULL DEFAULT '',
                   updated_by TEXT NOT NULL DEFAULT '',
+                  UNIQUE(prefix, serial)
+                )
+                """,
+            )
+            db_execute(
+                connection,
+                """
+                CREATE TABLE IF NOT EXISTS rir_records (
+                  id BIGSERIAL PRIMARY KEY,
+                  prefix TEXT NOT NULL,
+                  year INTEGER NOT NULL,
+                  serial INTEGER NOT NULL,
+                  number TEXT NOT NULL UNIQUE,
+                  title TEXT NOT NULL,
+                  department TEXT NOT NULL,
+                  owner TEXT NOT NULL,
+                  status TEXT NOT NULL,
+                  created_at TEXT NOT NULL,
+                  notes TEXT NOT NULL DEFAULT '',
+                  updated_at TEXT NOT NULL,
+                  UNIQUE(prefix, serial)
+                )
+                """,
+            )
+            db_execute(
+                connection,
+                """
+                CREATE TABLE IF NOT EXISTS mrr_records (
+                  id BIGSERIAL PRIMARY KEY,
+                  prefix TEXT NOT NULL,
+                  year INTEGER NOT NULL,
+                  serial INTEGER NOT NULL,
+                  number TEXT NOT NULL UNIQUE,
+                  title TEXT NOT NULL,
+                  department TEXT NOT NULL,
+                  owner TEXT NOT NULL,
+                  status TEXT NOT NULL,
+                  created_at TEXT NOT NULL,
+                  notes TEXT NOT NULL DEFAULT '',
+                  updated_at TEXT NOT NULL,
+                  UNIQUE(prefix, serial)
+                )
+                """,
+            )
+            db_execute(
+                connection,
+                """
+                CREATE TABLE IF NOT EXISTS ncr_records (
+                  id BIGSERIAL PRIMARY KEY,
+                  prefix TEXT NOT NULL,
+                  year INTEGER NOT NULL,
+                  serial INTEGER NOT NULL,
+                  number TEXT NOT NULL UNIQUE,
+                  title TEXT NOT NULL,
+                  department TEXT NOT NULL,
+                  owner TEXT NOT NULL,
+                  status TEXT NOT NULL,
+                  created_at TEXT NOT NULL,
+                  notes TEXT NOT NULL DEFAULT '',
+                  updated_at TEXT NOT NULL,
+                  UNIQUE(prefix, serial)
+                )
+                """,
+            )
+            db_execute(
+                connection,
+                """
+                CREATE TABLE IF NOT EXISTS qor_records (
+                  id BIGSERIAL PRIMARY KEY,
+                  prefix TEXT NOT NULL,
+                  year INTEGER NOT NULL,
+                  serial INTEGER NOT NULL,
+                  number TEXT NOT NULL UNIQUE,
+                  title TEXT NOT NULL,
+                  department TEXT NOT NULL,
+                  owner TEXT NOT NULL,
+                  status TEXT NOT NULL,
+                  created_at TEXT NOT NULL,
+                  notes TEXT NOT NULL DEFAULT '',
+                  updated_at TEXT NOT NULL,
                   UNIQUE(prefix, serial)
                 )
                 """,
@@ -261,6 +372,86 @@ def init_db() -> None:
             db_execute(
                 connection,
                 """
+                CREATE TABLE IF NOT EXISTS rir_records (
+                  id INTEGER PRIMARY KEY AUTOINCREMENT,
+                  prefix TEXT NOT NULL,
+                  year INTEGER NOT NULL,
+                  serial INTEGER NOT NULL,
+                  number TEXT NOT NULL UNIQUE,
+                  title TEXT NOT NULL,
+                  department TEXT NOT NULL,
+                  owner TEXT NOT NULL,
+                  status TEXT NOT NULL,
+                  created_at TEXT NOT NULL,
+                  notes TEXT NOT NULL DEFAULT '',
+                  updated_at TEXT NOT NULL,
+                  UNIQUE(prefix, serial)
+                )
+                """,
+            )
+            db_execute(
+                connection,
+                """
+                CREATE TABLE IF NOT EXISTS mrr_records (
+                  id INTEGER PRIMARY KEY AUTOINCREMENT,
+                  prefix TEXT NOT NULL,
+                  year INTEGER NOT NULL,
+                  serial INTEGER NOT NULL,
+                  number TEXT NOT NULL UNIQUE,
+                  title TEXT NOT NULL,
+                  department TEXT NOT NULL,
+                  owner TEXT NOT NULL,
+                  status TEXT NOT NULL,
+                  created_at TEXT NOT NULL,
+                  notes TEXT NOT NULL DEFAULT '',
+                  updated_at TEXT NOT NULL,
+                  UNIQUE(prefix, serial)
+                )
+                """,
+            )
+            db_execute(
+                connection,
+                """
+                CREATE TABLE IF NOT EXISTS ncr_records (
+                  id INTEGER PRIMARY KEY AUTOINCREMENT,
+                  prefix TEXT NOT NULL,
+                  year INTEGER NOT NULL,
+                  serial INTEGER NOT NULL,
+                  number TEXT NOT NULL UNIQUE,
+                  title TEXT NOT NULL,
+                  department TEXT NOT NULL,
+                  owner TEXT NOT NULL,
+                  status TEXT NOT NULL,
+                  created_at TEXT NOT NULL,
+                  notes TEXT NOT NULL DEFAULT '',
+                  updated_at TEXT NOT NULL,
+                  UNIQUE(prefix, serial)
+                )
+                """,
+            )
+            db_execute(
+                connection,
+                """
+                CREATE TABLE IF NOT EXISTS qor_records (
+                  id INTEGER PRIMARY KEY AUTOINCREMENT,
+                  prefix TEXT NOT NULL,
+                  year INTEGER NOT NULL,
+                  serial INTEGER NOT NULL,
+                  number TEXT NOT NULL UNIQUE,
+                  title TEXT NOT NULL,
+                  department TEXT NOT NULL,
+                  owner TEXT NOT NULL,
+                  status TEXT NOT NULL,
+                  created_at TEXT NOT NULL,
+                  notes TEXT NOT NULL DEFAULT '',
+                  updated_at TEXT NOT NULL,
+                  UNIQUE(prefix, serial)
+                )
+                """,
+            )
+            db_execute(
+                connection,
+                """
                 CREATE TABLE IF NOT EXISTS users (
                   id INTEGER PRIMARY KEY AUTOINCREMENT,
                   username TEXT NOT NULL UNIQUE,
@@ -289,18 +480,31 @@ def init_db() -> None:
                 )
                 """,
             )
+            # Vérification des tables créées
+        if not using_postgres():
+            cursor = connection.cursor()
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
+            tables = [row[0] for row in cursor.fetchall()]
+            print("Tables créées (SQLite) :", tables)
+        else:
+            cursor = connection.cursor()
+            cursor.execute("SELECT table_name FROM information_schema.tables WHERE table_schema='public';")
+            tables = [row[0] for row in cursor.fetchall()]
+            print("Tables créées (PostgreSQL) :", tables)
 
-        ensure_record_columns(connection)
+        for table_name in MODULE_TABLES.values():
+            ensure_record_columns(connection, table_name)
         ensure_user_columns(connection)
-        db_execute(
-            connection,
-            """
-            INSERT INTO settings (key, value)
-            VALUES ('prefix', ?)
-            ON CONFLICT(key) DO NOTHING
-            """,
-            (DEFAULT_PREFIX,),
-        )
+        for module_name, default_prefix in MODULE_DEFAULT_PREFIXES.items():
+            db_execute(
+                connection,
+                """
+                INSERT INTO settings (key, value)
+                VALUES (?, ?)
+                ON CONFLICT(key) DO NOTHING
+                """,
+                (get_module_prefix_key(module_name), default_prefix),
+            )
         cleanup_expired_sessions(connection)
         seed_default_admin(connection)
         connection.commit()
@@ -321,20 +525,21 @@ def seed_default_admin(connection: DBConnection) -> None:
     create_user(connection, username, display_name, password, "admin")
 
 
-def get_prefix(connection: DBConnection) -> str:
-    row = db_fetchone(connection, "SELECT value FROM settings WHERE key = 'prefix'")
-    return sanitize_prefix(row["value"] if row else DEFAULT_PREFIX)
+def get_prefix(connection: DBConnection, module: str) -> str:
+    normalized_module = normalize_module(module)
+    row = db_fetchone(connection, "SELECT value FROM settings WHERE key = ?", (get_module_prefix_key(normalized_module),))
+    return sanitize_prefix(row["value"] if row else MODULE_DEFAULT_PREFIXES[normalized_module])
 
 
-def set_prefix(connection: DBConnection, prefix: str) -> None:
+def set_prefix(connection: DBConnection, module: str, prefix: str) -> None:
     db_execute(
         connection,
         """
         INSERT INTO settings (key, value)
-        VALUES ('prefix', ?)
+        VALUES (?, ?)
         ON CONFLICT(key) DO UPDATE SET value = excluded.value
         """,
-        (sanitize_prefix(prefix),),
+        (get_module_prefix_key(module), sanitize_prefix(prefix)),
     )
 
 
@@ -357,15 +562,17 @@ def set_current_serial(connection: DBConnection, prefix: str, serial: int) -> No
 
 def next_serial(
     connection: DBConnection,
+    module: str,
     prefix: str,
     excluded_id: int | None = None,
 ) -> int:
+    table_name = get_module_table(module)
     if excluded_id is None:
         row = db_fetchone(
             connection,
-            """
+            f"""
             SELECT COALESCE(MAX(serial), 0) + 1 AS next_serial
-            FROM records
+            FROM {table_name}
             WHERE prefix = ?
             """,
             (prefix,),
@@ -373,15 +580,79 @@ def next_serial(
     else:
         row = db_fetchone(
             connection,
-            """
+            f"""
             SELECT COALESCE(MAX(serial), 0) + 1 AS next_serial
-            FROM records
+            FROM {table_name}
             WHERE prefix = ? AND id <> ?
             """,
             (prefix, excluded_id),
         )
 
     return int(row["next_serial"])
+
+
+def find_reusable_reserved_record(connection: DBConnection, module: str, prefix: str) -> Any:
+    table_name = get_module_table(module)
+    return db_fetchone(
+        connection,
+        f"""
+        SELECT id, prefix, year, serial, number, title, department, owner, status, created_at, notes,
+               updated_at, created_by, updated_by
+        FROM {table_name}
+        WHERE prefix = ?
+          AND status = 'unused'
+        ORDER BY serial ASC, id ASC
+        LIMIT 1
+        """,
+        (prefix,),
+    )
+
+
+def fetch_reusable_record_by_id(connection: DBConnection, module: str, prefix: str, record_id: int) -> Any:
+    table_name = get_module_table(module)
+    return db_fetchone(
+        connection,
+        f"""
+        SELECT id, prefix, year, serial, number, title, department, owner, status, created_at, notes,
+               updated_at, created_by, updated_by
+        FROM {table_name}
+        WHERE id = ? AND prefix = ? AND status = 'unused'
+        """,
+        (record_id, prefix),
+    )
+
+
+def fetch_reusable_records_by_ids(
+    connection: DBConnection,
+    module: str,
+    prefix: str,
+    record_ids: list[int],
+) -> list[Any]:
+    if not record_ids:
+        return []
+
+    table_name = get_module_table(module)
+    placeholders = ", ".join("?" for _ in record_ids)
+    rows = db_fetchall(
+        connection,
+        f"""
+        SELECT id, prefix, year, serial, number, title, department, owner, status, created_at, notes,
+               updated_at, created_by, updated_by
+        FROM {table_name}
+        WHERE prefix = ? AND status = 'unused' AND id IN ({placeholders})
+        ORDER BY serial ASC, id ASC
+        """,
+        (prefix, *record_ids),
+    )
+    return list(rows)
+
+
+def get_next_record_number(connection: DBConnection, module: str, prefix: str) -> tuple[str, bool]:
+    reusable = find_reusable_reserved_record(connection, module, prefix)
+    if reusable is not None:
+        return str(reusable["number"]), True
+
+    return build_number(prefix, next_serial(connection, module, prefix)), False
 
 
 def serialize_record(row: Any) -> dict[str, object]:
@@ -416,20 +687,22 @@ def serialize_user(row: Any) -> dict[str, object]:
     }
 
 
-def fetch_record(connection: DBConnection, record_id: int) -> Any:
+def fetch_record(connection: DBConnection, module: str, record_id: int) -> Any:
+    table_name = get_module_table(module)
     return db_fetchone(
         connection,
-        """
+        f"""
         SELECT id, prefix, year, serial, number, title, department, owner, status, created_at, notes,
                updated_at, created_by, updated_by
-        FROM records
+        FROM {table_name}
         WHERE id = ?
         """,
         (record_id,),
     )
 
 
-def list_records(connection: DBConnection, params: dict[str, list[str]]) -> list[dict[str, object]]:
+def list_records(connection: DBConnection, module: str, params: dict[str, list[str]]) -> list[dict[str, object]]:
+    table_name = get_module_table(module)
     clauses: list[str] = []
     values: list[object] = []
     search = params.get("search", [""])[0].strip().lower()
@@ -455,14 +728,31 @@ def list_records(connection: DBConnection, params: dict[str, list[str]]) -> list
     sql = """
         SELECT id, prefix, year, serial, number, title, department, owner, status, created_at, notes,
                updated_at, created_by, updated_by
-        FROM records
+        FROM {table_name}
     """
+    sql = sql.format(table_name=table_name)
 
     if clauses:
         sql += " WHERE " + " AND ".join(clauses)
 
-    sql += " ORDER BY updated_at DESC, id DESC"
+    sql += " ORDER BY id DESC"
     rows = db_fetchall(connection, sql, tuple(values))
+    return [serialize_record(row) for row in rows]
+
+
+def list_unused_records(connection: DBConnection, module: str, prefix: str) -> list[dict[str, object]]:
+    table_name = get_module_table(module)
+    rows = db_fetchall(
+        connection,
+        f"""
+        SELECT id, prefix, year, serial, number, title, department, owner, status, created_at, notes,
+               updated_at, created_by, updated_by
+        FROM {table_name}
+        WHERE prefix = ? AND status = 'unused'
+        ORDER BY serial ASC, id ASC
+        """,
+        (prefix,),
+    )
     return [serialize_record(row) for row in rows]
 
 
@@ -681,7 +971,7 @@ def validate_record_payload(payload: dict[str, object]) -> dict[str, object]:
     if not title or not department or not owner or not created_at:
         raise ApiError(HTTPStatus.BAD_REQUEST, "Les champs obligatoires sont manquants.")
 
-    if status not in {"draft", "in_review", "approved", "archived", "reserved"}:
+    if status not in {"draft", "in_review", "approved", "archived", "reserved", "unused"}:
         raise ApiError(HTTPStatus.BAD_REQUEST, "Le statut est invalide.")
 
     try:
@@ -700,7 +990,7 @@ def validate_record_payload(payload: dict[str, object]) -> dict[str, object]:
     }
 
 
-def validate_bulk_reservation_payload(payload: dict[str, object]) -> dict[str, int]:
+def validate_bulk_reservation_payload(payload: dict[str, object]) -> dict[str, object]:
     try:
         quantity = int(payload.get("quantity", 0))
     except (TypeError, ValueError) as error:
@@ -712,7 +1002,24 @@ def validate_bulk_reservation_payload(payload: dict[str, object]) -> dict[str, i
     if quantity > 200:
         raise ApiError(HTTPStatus.BAD_REQUEST, "Vous pouvez reserver jusqu'a 200 codes par operation.")
 
-    return {"quantity": quantity}
+    raw_ids = payload.get("preferredReusableRecordIds", [])
+    if raw_ids == "" or raw_ids is None:
+        raw_ids = []
+
+    if not isinstance(raw_ids, list):
+        raise ApiError(HTTPStatus.BAD_REQUEST, "La selection des numeros non utilises est invalide.")
+
+    try:
+        preferred_ids = [int(value) for value in raw_ids]
+    except (TypeError, ValueError) as error:
+        raise ApiError(HTTPStatus.BAD_REQUEST, "La selection des numeros non utilises est invalide.") from error
+
+    preferred_ids = list(dict.fromkeys(preferred_ids))
+
+    if len(preferred_ids) > quantity:
+        raise ApiError(HTTPStatus.BAD_REQUEST, "Le nombre de numeros non utilises coches depasse la quantite demandee.")
+
+    return {"quantity": quantity, "preferred_reusable_record_ids": preferred_ids}
 
 
 class QualityRequestHandler(BaseHTTPRequestHandler):
@@ -764,11 +1071,11 @@ class QualityRequestHandler(BaseHTTPRequestHandler):
 
             if parsed.path == "/api/settings":
                 if self.command == "GET":
-                    self.api_get_settings()
+                    self.api_get_settings(parsed)
                     return
                 if self.command == "PUT":
                     self.require_role("admin")
-                    self.api_update_settings()
+                    self.api_update_settings(parsed)
                     return
 
             if parsed.path == "/api/records":
@@ -778,12 +1085,12 @@ class QualityRequestHandler(BaseHTTPRequestHandler):
                     return
                 if self.command == "POST":
                     self.require_role("editor")
-                    self.api_create_record()
+                    self.api_create_record(parsed)
                     return
 
             if parsed.path == "/api/records/reserve" and self.command == "POST":
                 self.require_role("editor")
-                self.api_bulk_reserve_records()
+                self.api_bulk_reserve_records(parsed)
                 return
 
             if parsed.path.startswith("/api/records/"):
@@ -793,11 +1100,11 @@ class QualityRequestHandler(BaseHTTPRequestHandler):
 
                 if self.command == "PUT":
                     self.require_role("editor")
-                    self.api_update_record(record_id)
+                    self.api_update_record(parsed, record_id)
                     return
                 if self.command == "DELETE":
                     self.require_role("admin")
-                    self.api_delete_record(record_id)
+                    self.api_delete_record(parsed, record_id)
                     return
 
             if parsed.path == "/api/users":
@@ -824,7 +1131,7 @@ class QualityRequestHandler(BaseHTTPRequestHandler):
             message = "Cette operation entre en conflit avec une donnee existante."
             if "users.username" in str(error):
                 message = "Ce nom d'utilisateur existe deja."
-            if "records.number" in str(error) or "records.prefix, records.serial" in str(error):
+            if ".number" in str(error) or ".prefix, " in str(error):
                 message = "Ce numero existe deja."
             self.send_error_json(HTTPStatus.CONFLICT, message)
         except Exception as error:
@@ -883,101 +1190,207 @@ class QualityRequestHandler(BaseHTTPRequestHandler):
         headers = [("Set-Cookie", self.build_expired_cookie())]
         self.send_json({"loggedOut": True}, headers=headers)
 
-    def api_get_settings(self) -> None:
+    def api_get_settings(self, parsed) -> None:
         self.require_auth()
+        module = self.get_requested_module(parsed)
         current_year = datetime.now().year
         with get_connection() as connection:
-            prefix = get_prefix(connection)
-            next_number = build_number(prefix, next_serial(connection, prefix))
+            prefix = get_prefix(connection, module)
+            next_number, using_reserved_number = get_next_record_number(connection, module, prefix)
 
         self.send_json(
             {
+                "module": module,
                 "prefix": prefix,
                 "currentYear": current_year,
                 "nextNumber": next_number,
+                "usingReservedNumber": using_reserved_number,
             }
         )
 
-    def api_update_settings(self) -> None:
+    def api_update_settings(self, parsed) -> None:
+        module = self.get_requested_module(parsed)
         payload = self.read_json_body()
         prefix = sanitize_prefix(str(payload.get("prefix", "")))
         with get_connection() as connection:
-            set_prefix(connection, prefix)
+            set_prefix(connection, module, prefix)
             connection.commit()
 
-        self.send_json({"prefix": prefix})
+        self.send_json({"module": module, "prefix": prefix})
 
     def api_list_records(self, parsed) -> None:
         params = parse_qs(parsed.query)
+        module = self.get_requested_module(parsed)
         with get_connection() as connection:
-            records = list_records(connection, params)
-            prefix = get_prefix(connection)
+            records = list_records(connection, module, params)
+            prefix = get_prefix(connection, module)
+            reusable_records = list_unused_records(connection, module, prefix)
 
-        self.send_json({"records": records, "prefix": prefix})
+        self.send_json({"module": module, "records": records, "reusableRecords": reusable_records, "prefix": prefix})
 
-    def api_create_record(self) -> None:
-        payload = validate_record_payload(self.read_json_body())
+    def api_create_record(self, parsed) -> None:
+        module = self.get_requested_module(parsed)
+        table_name = get_module_table(module)
+        raw_payload = self.read_json_body()
+        payload = validate_record_payload(raw_payload)
         actor = self.serialize_current_user()["displayName"]
+        reusable_record_id = raw_payload.get("reusableRecordId")
+
+        if reusable_record_id in {"", None}:
+            requested_reusable_record_id = None
+        else:
+            try:
+                requested_reusable_record_id = int(reusable_record_id)
+            except (TypeError, ValueError) as error:
+                raise ApiError(HTTPStatus.BAD_REQUEST, "Le numero non utilise selectionne est invalide.") from error
 
         with get_connection() as connection:
-            prefix = get_prefix(connection)
+            prefix = get_prefix(connection, module)
             begin_write(connection)
-            serial = next_serial(connection, prefix)
-            number = build_number(prefix, serial)
             now = utc_now()
-            db_execute(
-                connection,
-                """
-                INSERT INTO records (
-                  prefix, year, serial, number, title, department, owner, status, created_at, notes,
-                  updated_at, created_by, updated_by
+            if requested_reusable_record_id is not None:
+                reusable = fetch_reusable_record_by_id(connection, module, prefix, requested_reusable_record_id)
+                if reusable is None:
+                    raise ApiError(HTTPStatus.BAD_REQUEST, "Le numero non utilise selectionne n'est plus disponible.")
+            else:
+                reusable = find_reusable_reserved_record(connection, module, prefix)
+
+            if reusable is not None:
+                record_id = int(reusable["id"])
+                number = str(reusable["number"])
+                db_execute(
+                    connection,
+                    f"""
+                    UPDATE {table_name}
+                    SET year = ?, title = ?, department = ?, owner = ?, status = ?, created_at = ?, notes = ?,
+                        updated_at = ?, created_by = ?, updated_by = ?
+                    WHERE id = ?
+                    """,
+                    (
+                        payload["year"],
+                        payload["title"],
+                        payload["department"],
+                        payload["owner"],
+                        payload["status"],
+                        payload["created_at"],
+                        payload["notes"],
+                        now,
+                        actor,
+                        actor,
+                        record_id,
+                    ),
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """,
-                (
-                    prefix,
-                    payload["year"],
-                    serial,
-                    number,
-                    payload["title"],
-                    payload["department"],
-                    payload["owner"],
-                    payload["status"],
-                    payload["created_at"],
-                    payload["notes"],
-                    now,
-                    actor,
-                    actor,
-                ),
-            )
+            else:
+                serial = next_serial(connection, module, prefix)
+                number = build_number(prefix, serial)
+                db_execute(
+                    connection,
+                    f"""
+                    INSERT INTO {table_name} (
+                      prefix, year, serial, number, title, department, owner, status, created_at, notes,
+                      updated_at, created_by, updated_by
+                    )
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        prefix,
+                        payload["year"],
+                        serial,
+                        number,
+                        payload["title"],
+                        payload["department"],
+                        payload["owner"],
+                        payload["status"],
+                        payload["created_at"],
+                        payload["notes"],
+                        now,
+                        actor,
+                        actor,
+                    ),
+                )
+                row = db_fetchone(connection, f"SELECT id FROM {table_name} WHERE number = ?", (number,))
+                record_id = int(row["id"])
+
             connection.commit()
-            row = db_fetchone(connection, "SELECT id FROM records WHERE number = ?", (number,))
-            row = fetch_record(connection, int(row["id"]))
+            row = fetch_record(connection, module, record_id)
 
-        self.send_json({"record": serialize_record(row)}, status=HTTPStatus.CREATED)
+        self.send_json(
+            {
+                "record": serialize_record(row),
+                "usedReservedNumber": reusable is not None,
+            },
+            status=HTTPStatus.CREATED,
+        )
 
-    def api_bulk_reserve_records(self) -> None:
+    def api_bulk_reserve_records(self, parsed) -> None:
+        module = self.get_requested_module(parsed)
+        table_name = get_module_table(module)
         payload = validate_bulk_reservation_payload(self.read_json_body())
         actor = self.serialize_current_user()["displayName"]
-        quantity = payload["quantity"]
+        quantity = int(payload["quantity"])
+        preferred_reusable_record_ids = list(payload["preferred_reusable_record_ids"])
         created_at = datetime.now().date().isoformat()
         year = datetime.now().year
 
         with get_connection() as connection:
-            prefix = get_prefix(connection)
+            prefix = get_prefix(connection, module)
             begin_write(connection)
-            start_serial = next_serial(connection, prefix)
-            numbers: list[str] = []
+            selected_reusable_rows = fetch_reusable_records_by_ids(
+                connection,
+                module,
+                prefix,
+                preferred_reusable_record_ids,
+            )
+            if len(selected_reusable_rows) != len(preferred_reusable_record_ids):
+                raise ApiError(HTTPStatus.BAD_REQUEST, "Un ou plusieurs numeros non utilises selectionnes ne sont plus disponibles.")
 
-            for index in range(quantity):
-                serial = start_serial + index
-                number = build_number(prefix, serial)
+            selected_by_id = {int(row["id"]): row for row in selected_reusable_rows}
+            selected_reusable_rows = [selected_by_id[record_id] for record_id in preferred_reusable_record_ids]
+
+            numbers: list[str] = []
+            reserved_items: list[tuple[int, str]] = []
+
+            for row in selected_reusable_rows:
+                number = str(row["number"])
                 numbers.append(number)
+                reserved_items.append((int(row["serial"]), number))
                 now = utc_now()
                 db_execute(
                     connection,
-                    """
-                    INSERT INTO records (
+                    f"""
+                    UPDATE {table_name}
+                    SET year = ?, title = ?, department = ?, owner = ?, status = ?, created_at = ?, notes = ?,
+                        updated_at = ?, created_by = ?, updated_by = ?
+                    WHERE id = ?
+                    """,
+                    (
+                        year,
+                        "Numero reserve",
+                        "Suivi numerotation",
+                        actor,
+                        "reserved",
+                        created_at,
+                        f"Reservation rapide de {quantity} code(s).",
+                        now,
+                        actor,
+                        actor,
+                        int(row["id"]),
+                    ),
+                )
+
+            start_serial = next_serial(connection, module, prefix)
+            generated_count = quantity - len(selected_reusable_rows)
+
+            for index in range(generated_count):
+                serial = start_serial + index
+                number = build_number(prefix, serial)
+                numbers.append(number)
+                reserved_items.append((serial, number))
+                now = utc_now()
+                db_execute(
+                    connection,
+                    f"""
+                    INSERT INTO {table_name} (
                       prefix, year, serial, number, title, department, owner, status, created_at, notes,
                       updated_at, created_by, updated_by
                     )
@@ -1002,22 +1415,28 @@ class QualityRequestHandler(BaseHTTPRequestHandler):
 
             connection.commit()
 
+        reserved_items.sort(key=lambda item: item[0])
+
         self.send_json(
             {
                 "count": quantity,
-                "firstNumber": numbers[0],
-                "lastNumber": numbers[-1],
+                "firstNumber": reserved_items[0][1],
+                "lastNumber": reserved_items[-1][1],
                 "numbers": numbers if quantity <= 20 else [],
+                "selectedCount": len(selected_reusable_rows),
+                "generatedCount": generated_count,
             },
             status=HTTPStatus.CREATED,
         )
 
-    def api_update_record(self, record_id: int) -> None:
+    def api_update_record(self, parsed, record_id: int) -> None:
+        module = self.get_requested_module(parsed)
+        table_name = get_module_table(module)
         payload = validate_record_payload(self.read_json_body())
         actor = self.serialize_current_user()["displayName"]
 
         with get_connection() as connection:
-            existing = fetch_record(connection, record_id)
+            existing = fetch_record(connection, module, record_id)
             if existing is None:
                 raise ApiError(HTTPStatus.NOT_FOUND, "Fiche introuvable.")
 
@@ -1027,8 +1446,8 @@ class QualityRequestHandler(BaseHTTPRequestHandler):
 
             db_execute(
                 connection,
-                """
-                UPDATE records
+                f"""
+                UPDATE {table_name}
                 SET year = ?, serial = ?, number = ?, title = ?, department = ?, owner = ?, status = ?,
                     created_at = ?, notes = ?, updated_at = ?, updated_by = ?
                 WHERE id = ?
@@ -1049,13 +1468,15 @@ class QualityRequestHandler(BaseHTTPRequestHandler):
                 ),
             )
             connection.commit()
-            updated = fetch_record(connection, record_id)
+            updated = fetch_record(connection, module, record_id)
 
         self.send_json({"record": serialize_record(updated)})
 
-    def api_delete_record(self, record_id: int) -> None:
+    def api_delete_record(self, parsed, record_id: int) -> None:
+        module = self.get_requested_module(parsed)
+        table_name = get_module_table(module)
         with get_connection() as connection:
-            cursor = db_execute(connection, "DELETE FROM records WHERE id = ?", (record_id,))
+            cursor = db_execute(connection, f"DELETE FROM {table_name} WHERE id = ?", (record_id,))
             connection.commit()
 
         if cursor.rowcount == 0:
@@ -1163,6 +1584,10 @@ class QualityRequestHandler(BaseHTTPRequestHandler):
         except json.JSONDecodeError as error:
             raise ApiError(HTTPStatus.BAD_REQUEST, "Le corps JSON est invalide.") from error
 
+    def get_requested_module(self, parsed) -> str:
+        params = parse_qs(parsed.query)
+        return normalize_module(params.get("module", ["itn"])[0])
+
     def parse_record_id(self, path: str) -> int | None:
         try:
             return int(path.rstrip("/").split("/")[-1])
@@ -1182,7 +1607,8 @@ class QualityRequestHandler(BaseHTTPRequestHandler):
         return {"user_id": user_id, "action": parts[3]}
 
     def serve_static(self, path: str) -> None:
-        target = "index.html" if path in {"", "/"} else path.lstrip("/")
+        normalized_path = path.rstrip("/") or "/"
+        target = "index.html" if normalized_path in {"/", *MODULE_ROUTE_PATHS.values()} else path.lstrip("/")
         requested = (STATIC_DIR / target).resolve()
 
         if STATIC_DIR not in requested.parents and requested != STATIC_DIR:

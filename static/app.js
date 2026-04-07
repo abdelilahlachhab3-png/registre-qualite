@@ -1,11 +1,61 @@
 const CURRENT_YEAR = new Date().getFullYear();
+const MODULES = {
+  itn: {
+    code: "ITN",
+    path: "/",
+    recordLabel: "fiche ITN",
+    recordLabelPlural: "fiches ITN",
+    emptyLabel: "Aucun numero ITN enregistre. Reservez des codes ou creez la premiere fiche pour lancer la numerotation.",
+    exportSlug: "itn",
+    placeholderPrefix: "QT230201-GSS-QA-ITN-01417",
+  },
+  rir: {
+    code: "RIR",
+    path: "/rir",
+    recordLabel: "fiche RIR",
+    recordLabelPlural: "fiches RIR",
+    emptyLabel: "Aucun numero RIR enregistre. Reservez des codes ou creez la premiere fiche pour lancer la numerotation.",
+    exportSlug: "rir",
+    placeholderPrefix: "QT230201-GSS-QA-RIR-01417",
+  },
+  mrr: {
+    code: "MRR",
+    path: "/mrr",
+    recordLabel: "fiche MRR",
+    recordLabelPlural: "fiches MRR",
+    emptyLabel: "Aucun numero MRR enregistre. Reservez des codes ou creez la premiere fiche pour lancer la numerotation.",
+    exportSlug: "mrr",
+    placeholderPrefix: "QT230201-GSS-QA-MRR-01417",
+  },
+  ncr: {
+    code: "NCR",
+    path: "/ncr",
+    recordLabel: "fiche NCR",
+    recordLabelPlural: "fiches NCR",
+    emptyLabel: "Aucun numero NCR enregistre. Reservez des codes ou creez la premiere fiche pour lancer la numerotation.",
+    exportSlug: "ncr",
+    placeholderPrefix: "QT230201-GSS-QA-NCR-01417",
+  },
+  qor: {
+    code: "QOR",
+    path: "/qor",
+    recordLabel: "fiche QOR",
+    recordLabelPlural: "fiches QOR",
+    emptyLabel: "Aucun numero QOR enregistre. Reservez des codes ou creez la premiere fiche pour lancer la numerotation.",
+    exportSlug: "qor",
+    placeholderPrefix: "QT230201-GSS-QA-QOR-01417",
+  },
+};
+const DEFAULT_MODULE_KEY = "itn";
 
 const state = {
+  currentModule: getCurrentModule(),
   records: [],
+  reusableRecords: [],
   users: [],
   editingId: null,
   currentUser: null,
-  settings: { prefix: "QT230201-GSS-QA-ITN-01417" },
+  settings: { prefix: MODULES[getCurrentModule()].placeholderPrefix, usingReservedNumber: false },
   filters: { query: "", status: "all", year: "all" },
   lastSyncLabel: "",
 };
@@ -15,6 +65,7 @@ const statusLabels = {
   in_review: "En validation",
   approved: "Validee",
   reserved: "Reservee",
+  unused: "Non utilise",
   archived: "Archivee",
 };
 
@@ -39,12 +90,20 @@ const elements = {
   currentUserName: document.querySelector("#current-user-name"),
   currentUserRole: document.querySelector("#current-user-role"),
   logoutButton: document.querySelector("#logout-button"),
+  moduleNavLinks: [...document.querySelectorAll(".module-nav__link")],
+  topbarModuleCode: document.querySelector("#topbar-module-code"),
+  heroTitle: document.querySelector("#hero-title"),
+  settingsTitle: document.querySelector("#settings-title"),
+  reserveTitle: document.querySelector("#reserve-title"),
+  recordsTitle: document.querySelector("#records-title"),
   adminPanel: document.querySelector("#admin-panel"),
   userForm: document.querySelector("#user-form"),
   usersBody: document.querySelector("#users-body"),
   userRowTemplate: document.querySelector("#user-row-template"),
   quickReserveForm: document.querySelector("#quick-reserve-form"),
   quickReserveCount: document.querySelector("#quick-reserve-count"),
+  quickReservePreferredField: document.querySelector("#quick-reserve-preferred-field"),
+  quickReservePreferredList: document.querySelector("#quick-reserve-preferred-list"),
   quickReservePreview: document.querySelector("#quick-reserve-preview"),
   quickReserveButton: document.querySelector("#quick-reserve-button"),
   form: document.querySelector("#record-form"),
@@ -54,12 +113,15 @@ const elements = {
   refreshButton: document.querySelector("#refresh-button"),
   prefixInput: document.querySelector("#prefix-input"),
   savePrefixButton: document.querySelector("#save-prefix"),
+  numberPreviewLabel: document.querySelector("#number-preview-label"),
   numberPreview: document.querySelector("#number-preview"),
   liveNumber: document.querySelector("#live-number"),
+  liveNumberLabel: document.querySelector("#live-number-label"),
   syncStatus: document.querySelector("#sync-status"),
   feedback: document.querySelector("#feedback"),
   totalCount: document.querySelector("#total-count"),
   yearCount: document.querySelector("#year-count"),
+  nextNumberLabel: document.querySelector("#next-number-label"),
   nextNumber: document.querySelector("#next-number"),
   reviewCount: document.querySelector("#review-count"),
   recordsBody: document.querySelector("#records-body"),
@@ -69,6 +131,8 @@ const elements = {
   searchInput: document.querySelector("#search-input"),
   statusFilter: document.querySelector("#status-filter"),
   yearFilter: document.querySelector("#year-filter"),
+  reusableNumberField: document.querySelector("#reusable-number-field"),
+  reusableNumberSelect: document.querySelector("#reusable-number-select"),
   userFields: {
     displayName: document.querySelector("#user-display-name"),
     username: document.querySelector("#user-username"),
@@ -88,7 +152,52 @@ const elements = {
 
 initialize();
 
+function getCurrentModule() {
+  const normalizedPath = window.location.pathname.replace(/\/+$/, "") || "/";
+  return Object.entries(MODULES).find(([, module]) => module.path === normalizedPath)?.[0] || DEFAULT_MODULE_KEY;
+}
+
+function getModuleConfig() {
+  return MODULES[state.currentModule] || MODULES[DEFAULT_MODULE_KEY];
+}
+
+function buildModuleApiUrl(path, extraParams = null) {
+  const url = new URL(path, window.location.origin);
+  url.searchParams.set("module", state.currentModule);
+
+  if (extraParams instanceof URLSearchParams) {
+    extraParams.forEach((value, key) => {
+      if (value !== "") {
+        url.searchParams.set(key, value);
+      }
+    });
+  }
+
+  return `${url.pathname}${url.search}`;
+}
+
+function renderModuleChrome() {
+  const module = getModuleConfig();
+
+  document.title = `Registre Qualite ${module.code}`;
+  elements.topbarModuleCode.textContent = module.code;
+  elements.heroTitle.textContent = `Maitrisez la numerotation et la validation de chaque fiche ${module.code}`;
+  elements.settingsTitle.textContent = `Parametres de numerotation ${module.code}`;
+  elements.reserveTitle.textContent = `Generer plusieurs numeros ${module.code}`;
+  elements.recordsTitle.textContent = `Liste des fiches ${module.code}`;
+  elements.emptyState.textContent = module.emptyLabel;
+  elements.prefixInput.placeholder = module.placeholderPrefix;
+  elements.moduleNavLinks.forEach((link) => {
+    link.dataset.active = link.dataset.module === state.currentModule ? "true" : "false";
+  });
+
+  if (!state.editingId) {
+    elements.formTitle.textContent = `Ajouter une ${module.recordLabel}`;
+  }
+}
+
 function initialize() {
+  renderModuleChrome();
   setDefaultFormValues();
   bindEvents();
   restoreSession();
@@ -123,6 +232,8 @@ function bindEvents() {
     loadRecords({ silent: true }).catch(() => {});
   });
   elements.fields.year.addEventListener("input", updateLiveNumber);
+  elements.reusableNumberSelect.addEventListener("change", updateLiveNumber);
+  elements.quickReservePreferredList.addEventListener("change", updateQuickReservePreview);
   elements.quickReserveCount.addEventListener("input", updateQuickReservePreview);
 }
 
@@ -168,6 +279,7 @@ async function handleLogout() {
 
   state.currentUser = null;
   state.records = [];
+  state.reusableRecords = [];
   state.users = [];
   resetForm();
   elements.passwordForm.reset();
@@ -194,10 +306,12 @@ async function loadDashboard() {
 }
 
 async function loadSettings() {
-  const response = await fetchJson("/api/settings");
+  const response = await fetchJson(buildModuleApiUrl("/api/settings"));
   state.settings.prefix = response.prefix;
+  state.settings.usingReservedNumber = Boolean(response.usingReservedNumber);
   elements.prefixInput.value = response.prefix;
   elements.numberPreview.textContent = response.nextNumber;
+  renderNumberUsageLabels();
   updateLiveNumber();
 }
 
@@ -208,8 +322,9 @@ async function loadRecords(options = {}) {
   if (state.filters.year !== "all") params.set("year", state.filters.year);
 
   try {
-    const response = await fetchJson(`/api/records${params.size ? `?${params}` : ""}`);
+    const response = await fetchJson(buildModuleApiUrl("/api/records", params));
     state.records = response.records;
+    state.reusableRecords = response.reusableRecords || [];
     state.settings.prefix = response.prefix;
     elements.prefixInput.value = response.prefix;
     state.lastSyncLabel = new Intl.DateTimeFormat("fr-FR", {
@@ -248,21 +363,26 @@ async function handleSubmit(event) {
     owner: elements.fields.owner.value.trim(),
     status: elements.fields.status.value,
     notes: elements.fields.notes.value.trim(),
+    reusableRecordId: elements.reusableNumberSelect.value || null,
   };
 
   try {
     if (state.editingId) {
-      await fetchJson(`/api/records/${state.editingId}`, {
+      await fetchJson(buildModuleApiUrl(`/api/records/${state.editingId}`), {
         method: "PUT",
         body: JSON.stringify(payload),
       });
       showFeedback("La fiche a ete mise a jour.");
     } else {
-      await fetchJson("/api/records", {
+      const response = await fetchJson(buildModuleApiUrl("/api/records"), {
         method: "POST",
         body: JSON.stringify(payload),
       });
-      showFeedback("La fiche a ete creee.");
+      showFeedback(
+        response.usedReservedNumber
+          ? `La fiche a ete creee avec le numero non utilise ${response.record.number}.`
+          : "La fiche a ete creee.",
+      );
     }
 
     resetForm();
@@ -276,18 +396,27 @@ async function handleQuickReserve(event) {
   event.preventDefault();
 
   const quantity = Number(elements.quickReserveCount.value);
+  const preferredReusableRecordIds = getSelectedQuickReserveIds();
+
+  if (preferredReusableRecordIds.length > quantity) {
+    showFeedback("Le nombre de numeros non utilises coches depasse la quantite demandee.", "error");
+    return;
+  }
 
   try {
-    const response = await fetchJson("/api/records/reserve", {
+    const response = await fetchJson(buildModuleApiUrl("/api/records/reserve"), {
       method: "POST",
-      body: JSON.stringify({ quantity }),
+      body: JSON.stringify({ quantity, preferredReusableRecordIds }),
     });
 
     elements.quickReserveCount.value = "1";
+    clearQuickReserveSelections();
     updateQuickReservePreview();
     await Promise.all([loadSettings(), loadRecords()]);
     showFeedback(
-      `${response.count} numero(s) reserve(s) : ${response.firstNumber} -> ${response.lastNumber}`,
+      response.selectedCount
+        ? `${response.count} numero(s) reserve(s) : ${response.selectedCount} choisi(s) + ${response.generatedCount} nouveau(x).`
+        : `${response.count} numero(s) reserve(s) : ${response.firstNumber} -> ${response.lastNumber}`,
     );
   } catch (error) {
     showFeedback(error.message, "error");
@@ -350,14 +479,14 @@ async function handleChangePassword(event) {
 
 async function savePrefix() {
   try {
-    const response = await fetchJson("/api/settings", {
+    const response = await fetchJson(buildModuleApiUrl("/api/settings"), {
       method: "PUT",
       body: JSON.stringify({ prefix: sanitizePrefix(elements.prefixInput.value) }),
     });
     state.settings.prefix = response.prefix;
     elements.prefixInput.value = response.prefix;
     await Promise.all([loadSettings(), loadRecords()]);
-    showFeedback("Le prefixe global a ete mis a jour.");
+    showFeedback(`Le prefixe ${getModuleConfig().code} a ete mis a jour.`);
   } catch (error) {
     showFeedback(error.message, "error");
   }
@@ -369,7 +498,7 @@ async function deleteRecord(recordId) {
   if (!window.confirm(`Supprimer la fiche ${record.number} ?`)) return;
 
   try {
-    await fetchJson(`/api/records/${recordId}`, { method: "DELETE" });
+    await fetchJson(buildModuleApiUrl(`/api/records/${recordId}`), { method: "DELETE" });
     if (state.editingId === recordId) resetForm();
     await Promise.all([loadSettings(), loadRecords()]);
     showFeedback("La fiche a ete supprimee.");
@@ -408,6 +537,8 @@ function setDefaultFormValues() {
   elements.fields.createdAt.value = today;
   elements.fields.year.value = String(CURRENT_YEAR);
   elements.fields.status.value = "draft";
+  elements.reusableNumberSelect.value = "";
+  clearQuickReserveSelections();
   updateLiveNumber();
   updateQuickReservePreview();
 }
@@ -416,14 +547,19 @@ function resetForm() {
   state.editingId = null;
   elements.form.reset();
   setDefaultFormValues();
-  elements.formTitle.textContent = "Ajouter une fiche qualite";
+  renderReusableNumberOptions();
+  updateLiveNumber();
+  elements.formTitle.textContent = `Ajouter une ${getModuleConfig().recordLabel}`;
   elements.submitButton.textContent = "Enregistrer la fiche";
   setRecordFormAccess();
 }
 
 function render() {
+  renderModuleChrome();
   renderStats();
   renderYearFilter();
+  renderReusableNumberOptions();
+  renderQuickReservePreferredOptions();
   renderTable();
   renderCurrentUser();
   updateSyncStatus();
@@ -434,14 +570,14 @@ function render() {
 function renderStats() {
   const currentYearRecords = state.records.filter((item) => Number(item.year) === CURRENT_YEAR);
   const inReviewRecords = state.records.filter((item) => item.status === "in_review");
-  const nextSerial = getNextSerial(state.settings.prefix);
-  const nextNumber = buildNumber(state.settings.prefix, nextSerial);
+  const nextNumber = getNextSuggestedNumber(state.settings.prefix);
 
   elements.totalCount.textContent = String(state.records.length);
   elements.yearCount.textContent = String(currentYearRecords.length);
   elements.reviewCount.textContent = String(inReviewRecords.length);
   elements.nextNumber.textContent = nextNumber;
   elements.numberPreview.textContent = nextNumber;
+  renderNumberUsageLabels();
 }
 
 function renderYearFilter() {
@@ -499,6 +635,7 @@ function renderTable() {
   });
 
   elements.emptyState.hidden = state.records.length > 0;
+  elements.emptyState.textContent = getModuleConfig().emptyLabel;
 }
 
 function renderUsers() {
@@ -554,6 +691,8 @@ function startEditing(recordId) {
   elements.fields.owner.value = record.owner;
   elements.fields.status.value = record.status;
   elements.fields.notes.value = record.notes || "";
+  elements.reusableNumberField.hidden = true;
+  elements.reusableNumberSelect.value = "";
   updateLiveNumber();
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
@@ -563,33 +702,172 @@ function updateLiveNumber() {
     const record = state.records.find((item) => item.id === state.editingId);
     if (record) {
       const prefix = record.prefix || state.settings.prefix;
+      elements.liveNumberLabel.textContent = "Numero de la fiche";
       elements.liveNumber.textContent = buildNumber(prefix, record.serial);
       return;
     }
   }
 
-  const nextSerial = getNextSerial(state.settings.prefix);
-  elements.liveNumber.textContent = buildNumber(state.settings.prefix, nextSerial);
+  elements.liveNumber.textContent = getNextSuggestedNumber(state.settings.prefix, getSelectedReusableRecordId());
+  renderNumberUsageLabels();
 }
 
 function updateQuickReservePreview() {
   const quantity = Math.max(1, Number(elements.quickReserveCount.value) || 1);
-  const firstSerial = getNextSerial(state.settings.prefix);
-  const lastSerial = firstSerial + quantity - 1;
+  const selectedRecords = getSelectedQuickReserveRecords();
+  const selectedCount = selectedRecords.length;
+
+  if (selectedCount > quantity) {
+    elements.quickReservePreview.textContent = `Selection actuelle : ${selectedCount} numero(s) non utilise(s). Augmentez la quantite ou decochez des numeros.`;
+    return;
+  }
+
+  if (selectedCount === quantity && selectedCount > 0) {
+    const numbers = selectedRecords.map((record) => record.number);
+    elements.quickReservePreview.textContent = `Numeros choisis : ${numbers.join(" | ")}`;
+    return;
+  }
+
+  const firstSerial = getNextFreshSerial(state.settings.prefix);
+  const lastSerial = firstSerial + (quantity - selectedCount) - 1;
   const firstNumber = buildNumber(state.settings.prefix, firstSerial);
   const lastNumber = buildNumber(state.settings.prefix, lastSerial);
+  if (selectedCount > 0) {
+    const selectedNumbers = selectedRecords.map((record) => record.number).join(" | ");
+    elements.quickReservePreview.textContent = quantity - selectedCount === 1
+      ? `Choisis : ${selectedNumbers} + nouveau : ${firstNumber}`
+      : `Choisis : ${selectedNumbers} + nouveaux : ${firstNumber} -> ${lastNumber}`;
+    return;
+  }
+
   elements.quickReservePreview.textContent = quantity === 1
     ? `Numero reserve : ${firstNumber}`
     : `Plage reservee : ${firstNumber} -> ${lastNumber}`;
 }
 
-function getNextSerial(prefix, excludedId = null) {
+function getReusableReservedRecords(prefix, excludedId = null) {
+  return state.reusableRecords
+    .filter((item) => (
+      item.prefix === prefix
+      && item.status === "unused"
+      && item.id !== excludedId
+    ))
+    .sort((left, right) => Number(left.serial) - Number(right.serial));
+}
+
+function getReusableReservedRecord(prefix, excludedId = null) {
+  return getReusableReservedRecords(prefix, excludedId)[0] || null;
+}
+
+function getNextFreshSerial(prefix, excludedId = null) {
   const serials = state.records
     .filter((item) => item.prefix === prefix && item.id !== excludedId)
     .map((item) => Number(item.serial))
     .filter((value) => Number.isFinite(value));
 
   return serials.length === 0 ? 1 : Math.max(...serials) + 1;
+}
+
+function getNextSuggestedNumber(prefix, excludedId = null) {
+  const selectedReusableRecord = getSelectedReusableRecord(prefix, excludedId);
+  if (selectedReusableRecord) {
+    return selectedReusableRecord.number;
+  }
+
+  const reusable = getReusableReservedRecord(prefix, excludedId);
+  if (reusable) {
+    return reusable.number;
+  }
+
+  return buildNumber(prefix, getNextFreshSerial(prefix, excludedId));
+}
+
+function getSelectedReusableRecordId() {
+  const value = Number(elements.reusableNumberSelect.value);
+  return Number.isFinite(value) && value > 0 ? value : null;
+}
+
+function getSelectedReusableRecord(prefix, excludedId = null) {
+  const selectedId = getSelectedReusableRecordId();
+  if (!selectedId) return null;
+  return getReusableReservedRecords(prefix, excludedId).find((item) => item.id === selectedId) || null;
+}
+
+function getSelectedQuickReserveIds() {
+  return [...elements.quickReservePreferredList.querySelectorAll('input[type="checkbox"]:checked')]
+    .map((input) => Number(input.value))
+    .filter((value) => Number.isFinite(value) && value > 0);
+}
+
+function getSelectedQuickReserveRecords() {
+  const selectedIds = new Set(getSelectedQuickReserveIds());
+  return getReusableReservedRecords(state.settings.prefix).filter((record) => selectedIds.has(record.id));
+}
+
+function renderReusableNumberOptions() {
+  const reusableRecords = getReusableReservedRecords(state.settings.prefix);
+  const selectedValue = elements.reusableNumberSelect.value;
+
+  elements.reusableNumberSelect.innerHTML = '<option value="">Selectionner un numero non utilise</option>';
+
+  reusableRecords.forEach((record) => {
+    const option = document.createElement("option");
+    option.value = String(record.id);
+    option.textContent = record.number;
+    elements.reusableNumberSelect.append(option);
+  });
+
+  if (reusableRecords.some((record) => String(record.id) === selectedValue)) {
+    elements.reusableNumberSelect.value = selectedValue;
+  } else if (reusableRecords.length > 0) {
+    elements.reusableNumberSelect.value = String(reusableRecords[0].id);
+  } else {
+    elements.reusableNumberSelect.value = "";
+  }
+
+  elements.reusableNumberField.hidden = state.editingId !== null || reusableRecords.length === 0;
+}
+
+function renderQuickReservePreferredOptions() {
+  const reusableRecords = getReusableReservedRecords(state.settings.prefix);
+  const selectedIds = new Set(getSelectedQuickReserveIds());
+
+  elements.quickReservePreferredList.innerHTML = "";
+
+  reusableRecords.forEach((record) => {
+    const label = document.createElement("label");
+    label.className = "checkbox-list__item";
+
+    const input = document.createElement("input");
+    input.type = "checkbox";
+    input.value = String(record.id);
+    input.checked = selectedIds.has(record.id);
+
+    const text = document.createElement("span");
+    text.textContent = record.number;
+
+    label.append(input, text);
+    elements.quickReservePreferredList.append(label);
+  });
+
+  elements.quickReservePreferredField.hidden = reusableRecords.length === 0;
+}
+
+function clearQuickReserveSelections() {
+  elements.quickReservePreferredList
+    .querySelectorAll('input[type="checkbox"]')
+    .forEach((input) => {
+      input.checked = false;
+    });
+}
+
+function renderNumberUsageLabels() {
+  const hasReusableReserved = Boolean(getReusableReservedRecord(state.settings.prefix));
+  const usingReserved = hasReusableReserved || state.settings.usingReservedNumber;
+
+  elements.numberPreviewLabel.textContent = usingReserved ? "Numero non utilise disponible :" : "Prochain numero :";
+  elements.nextNumberLabel.textContent = usingReserved ? "Numero non utilise" : "Prochain numero";
+  elements.liveNumberLabel.textContent = usingReserved ? "Numero non utilise" : "Numero prevu";
 }
 
 function createStatusPill(status) {
@@ -609,8 +887,9 @@ function createRolePill(role) {
 }
 
 function sanitizePrefix(value) {
-  const normalized = String(value || "QT230201-GSS-QA-ITN-01417").toUpperCase().replace(/[^A-Z0-9-]/g, "").slice(0, 32);
-  return normalized || "QT230201-GSS-QA-ITN-01417";
+  const fallback = getModuleConfig().placeholderPrefix;
+  const normalized = String(value || fallback).toUpperCase().replace(/[^A-Z0-9-]/g, "").slice(0, 32);
+  return normalized || fallback;
 }
 
 function buildNumber(prefix, serial) {
@@ -689,7 +968,7 @@ function exportCsv() {
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
-  link.download = `fiches-qualite-${new Date().toISOString().slice(0, 10)}.csv`;
+  link.download = `fiches-${getModuleConfig().exportSlug}-${new Date().toISOString().slice(0, 10)}.csv`;
   link.click();
   URL.revokeObjectURL(url);
 }
@@ -699,6 +978,12 @@ function setRecordFormAccess() {
   Object.values(elements.fields).forEach((field) => {
     field.disabled = !enabled;
   });
+  elements.reusableNumberSelect.disabled = !enabled;
+  elements.quickReservePreferredList
+    .querySelectorAll('input[type="checkbox"]')
+    .forEach((input) => {
+      input.disabled = !enabled;
+    });
   elements.submitButton.disabled = !enabled;
   elements.resetButton.disabled = !enabled;
   elements.quickReserveCount.disabled = !enabled;
