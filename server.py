@@ -480,18 +480,6 @@ def init_db() -> None:
                 )
                 """,
             )
-            # Vérification des tables créées
-        if not using_postgres():
-            cursor = connection.cursor()
-            cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
-            tables = [row[0] for row in cursor.fetchall()]
-            print("Tables créées (SQLite) :", tables)
-        else:
-            cursor = connection.cursor()
-            cursor.execute("SELECT table_name FROM information_schema.tables WHERE table_schema='public';")
-            tables = [row[0] for row in cursor.fetchall()]
-            print("Tables créées (PostgreSQL) :", tables)
-
         for table_name in MODULE_TABLES.values():
             ensure_record_columns(connection, table_name)
         ensure_user_columns(connection)
