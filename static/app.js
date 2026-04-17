@@ -52,11 +52,12 @@ const state = {
   currentModule: getCurrentModule(),
   records: [],
   reusableRecords: [],
+  ownerOptions: [],
   users: [],
   editingId: null,
   currentUser: null,
   settings: { prefix: MODULES[getCurrentModule()].placeholderPrefix, usingReservedNumber: false },
-  filters: { query: "", status: "all", year: "all" },
+  filters: { query: "", status: "all", owner: "all", year: "all" },
   lastSyncLabel: "",
 };
 
@@ -130,6 +131,7 @@ const elements = {
   exportButton: document.querySelector("#export-button"),
   searchInput: document.querySelector("#search-input"),
   statusFilter: document.querySelector("#status-filter"),
+  ownerFilter: document.querySelector("#owner-filter"),
   yearFilter: document.querySelector("#year-filter"),
   reusableNumberField: document.querySelector("#reusable-number-field"),
   reusableNumberSelect: document.querySelector("#reusable-number-select"),
@@ -227,6 +229,10 @@ function bindEvents() {
     state.filters.status = event.target.value;
     loadRecords({ silent: true }).catch(() => {});
   });
+  elements.ownerFilter.addEventListener("change", (event) => {
+    state.filters.owner = event.target.value;
+    loadRecords({ silent: true }).catch(() => {});
+  });
   elements.yearFilter.addEventListener("change", (event) => {
     state.filters.year = event.target.value;
     loadRecords({ silent: true }).catch(() => {});
@@ -280,6 +286,7 @@ async function handleLogout() {
   state.currentUser = null;
   state.records = [];
   state.reusableRecords = [];
+  state.ownerOptions = [];
   state.users = [];
   resetForm();
   elements.passwordForm.reset();
@@ -319,12 +326,14 @@ async function loadRecords(options = {}) {
   const params = new URLSearchParams();
   if (state.filters.query) params.set("search", state.filters.query);
   if (state.filters.status !== "all") params.set("status", state.filters.status);
+  if (state.filters.owner !== "all") params.set("owner", state.filters.owner);
   if (state.filters.year !== "all") params.set("year", state.filters.year);
 
   try {
     const response = await fetchJson(buildModuleApiUrl("/api/records", params));
     state.records = response.records;
     state.reusableRecords = response.reusableRecords || [];
+    state.ownerOptions = response.owners || [];
     state.settings.prefix = response.prefix;
     elements.prefixInput.value = response.prefix;
     state.lastSyncLabel = new Intl.DateTimeFormat("fr-FR", {
@@ -557,6 +566,7 @@ function resetForm() {
 function render() {
   renderModuleChrome();
   renderStats();
+  renderOwnerFilter();
   renderYearFilter();
   renderReusableNumberOptions();
   renderQuickReservePreferredOptions();
@@ -597,6 +607,26 @@ function renderYearFilter() {
   } else {
     state.filters.year = "all";
     elements.yearFilter.value = "all";
+  }
+}
+
+function renderOwnerFilter() {
+  const owners = state.ownerOptions;
+  const currentValue = state.filters.owner;
+
+  elements.ownerFilter.innerHTML = '<option value="all">Tous</option>';
+  owners.forEach((owner) => {
+    const option = document.createElement("option");
+    option.value = owner;
+    option.textContent = owner;
+    elements.ownerFilter.append(option);
+  });
+
+  if (owners.includes(currentValue)) {
+    elements.ownerFilter.value = currentValue;
+  } else {
+    state.filters.owner = "all";
+    elements.ownerFilter.value = "all";
   }
 }
 

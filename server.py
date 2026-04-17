@@ -696,6 +696,7 @@ def list_records(connection: DBConnection, module: str, params: dict[str, list[s
     search = params.get("search", [""])[0].strip().lower()
     status = params.get("status", ["all"])[0]
     year = params.get("year", ["all"])[0]
+    owner = params.get("owner", ["all"])[0].strip()
 
     if status != "all":
         clauses.append("status = ?")
@@ -704,6 +705,10 @@ def list_records(connection: DBConnection, module: str, params: dict[str, list[s
     if year != "all":
         clauses.append("year = ?")
         values.append(int(year))
+
+    if owner != "all":
+        clauses.append("owner = ?")
+        values.append(owner)
 
     if search:
         clauses.append(
@@ -726,6 +731,32 @@ def list_records(connection: DBConnection, module: str, params: dict[str, list[s
     sql += " ORDER BY id DESC"
     rows = db_fetchall(connection, sql, tuple(values))
     return [serialize_record(row) for row in rows]
+
+
+def list_record_owners(connection: DBConnection, module: str) -> list[str]:
+    table_name = get_module_table(module)
+    if using_postgres():
+        rows = db_fetchall(
+            connection,
+            f"""
+            SELECT DISTINCT owner
+            FROM {table_name}
+            WHERE owner <> ''
+            ORDER BY LOWER(owner)
+            """,
+        )
+    else:
+        rows = db_fetchall(
+            connection,
+            f"""
+            SELECT DISTINCT owner
+            FROM {table_name}
+            WHERE owner <> ''
+            ORDER BY owner COLLATE NOCASE
+            """,
+        )
+
+    return [str(row["owner"]) for row in rows]
 
 
 def list_unused_records(connection: DBConnection, module: str, prefix: str) -> list[dict[str, object]]:
@@ -1213,8 +1244,17 @@ class QualityRequestHandler(BaseHTTPRequestHandler):
             records = list_records(connection, module, params)
             prefix = get_prefix(connection, module)
             reusable_records = list_unused_records(connection, module, prefix)
+            owners = list_record_owners(connection, module)
 
-        self.send_json({"module": module, "records": records, "reusableRecords": reusable_records, "prefix": prefix})
+        self.send_json(
+            {
+                "module": module,
+                "records": records,
+                "reusableRecords": reusable_records,
+                "owners": owners,
+                "prefix": prefix,
+            }
+        )
 
     def api_create_record(self, parsed) -> None:
         module = self.get_requested_module(parsed)
