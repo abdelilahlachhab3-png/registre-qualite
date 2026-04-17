@@ -739,9 +739,12 @@ def list_record_owners(connection: DBConnection, module: str) -> list[str]:
         rows = db_fetchall(
             connection,
             f"""
-            SELECT DISTINCT owner
-            FROM {table_name}
-            WHERE owner <> ''
+            SELECT owner
+            FROM (
+              SELECT DISTINCT owner
+              FROM {table_name}
+              WHERE owner <> ''
+            ) AS distinct_owners
             ORDER BY LOWER(owner)
             """,
         )
